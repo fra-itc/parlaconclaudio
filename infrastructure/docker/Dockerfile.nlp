@@ -95,4 +95,4 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
 # Run the NLP gRPC server
 # Note: This assumes you have a gRPC server script for NLP
 # Adjust the command based on your actual implementation
-CMD ["python", "-m", "src.agents.nlp.grpc_server"]
+CMD ["python", "-m", "src.core.nlp_insights.nlp_service"]

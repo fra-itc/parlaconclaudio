@@ -88,4 +88,4 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
 # Run the STT gRPC server
 # Note: This assumes you have a gRPC server script for STT
 # Adjust the command based on your actual implementation
-CMD ["python", "-m", "src.agents.stt.grpc_server"]
+CMD ["python", "-m", "src.core.stt_engine.grpc_server"]

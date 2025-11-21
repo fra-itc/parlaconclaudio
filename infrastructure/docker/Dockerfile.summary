@@ -91,4 +91,4 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
 # Run the Summary gRPC server
 # Note: This assumes you have a gRPC server script for Summary
 # Adjust the command based on your actual implementation
-CMD ["python", "-m", "src.agents.summary.grpc_server"]
+CMD ["python", "-m", "src.core.summary_generator.summary_service"]
