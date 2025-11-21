@@ -10,8 +10,8 @@ def test_silero_vad_init():
 def test_silero_vad_process():
     vad = SileroVAD()
 
-    # Generate random audio
-    audio = np.random.randn(1600).astype(np.float32)  # 100ms at 16kHz
+    # Generate random audio - Silero VAD requires exactly 512 samples for 16kHz
+    audio = np.random.randn(512).astype(np.float32)  # 32ms at 16kHz
 
     is_speech, confidence = vad.process_chunk(audio)
     assert isinstance(is_speech, bool)
