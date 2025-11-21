@@ -1,0 +1,240 @@
+// gRPC Protocol Buffer Definitions for Real-Time STT Audio Streaming
+// Version: 1.0.0
+// POC: Windows 11 with WASAPI capture
+
+syntax = "proto3";
+
+package rtstt.audio;
+
+// =============================================================================
+// AUDIO CAPTURE SERVICE
+// =============================================================================
+
+service AudioStreamService {
+  // Bidirectional streaming: client sends audio chunks, server returns transcriptions
+  rpc StreamAudio(stream AudioChunk) returns (stream TranscriptionResponse);
+
+  // Get available audio devices (Windows WASAPI)
+  rpc ListAudioDevices(Empty) returns (AudioDeviceList);
+
+  // Health check
+  rpc HealthCheck(Empty) returns (HealthStatus);
+}
+
+// =============================================================================
+// STT ENGINE SERVICE
+// =============================================================================
+
+service STTEngineService {
+  // Process single audio chunk (for batch processing)
+  rpc Transcribe(AudioChunk) returns (TranscriptionResponse);
+
+  // Stream processing with VAD segmentation
+  rpc StreamTranscribe(stream AudioChunk) returns (stream TranscriptionResponse);
+
+  // Get model info (Whisper Large V3)
+  rpc GetModelInfo(Empty) returns (ModelInfo);
+}
+
+// =============================================================================
+// NLP INSIGHTS SERVICE
+// =============================================================================
+
+service NLPInsightsService {
+  // Extract keywords from transcription
+  rpc ExtractKeywords(TranscriptionText) returns (KeywordList);
+
+  // Perform speaker diarization
+  rpc DiarizeSpeakers(AudioChunk) returns (SpeakerSegments);
+
+  // Semantic similarity analysis
+  rpc AnalyzeSimilarity(SimilarityRequest) returns (SimilarityResponse);
+}
+
+// =============================================================================
+// SUMMARY GENERATOR SERVICE
+// =============================================================================
+
+service SummaryService {
+  // Generate summary from transcription
+  rpc GenerateSummary(SummaryRequest) returns (SummaryResponse);
+
+  // Stream summary updates (for long transcriptions)
+  rpc StreamSummary(stream TranscriptionText) returns (stream SummaryChunk);
+}
+
+// =============================================================================
+// MESSAGE TYPES
+// =============================================================================
+
+message Empty {}
+
+// Audio chunk with metadata
+message AudioChunk {
+  bytes audio_data = 1;           // Raw PCM audio data
+  int32 sample_rate = 2;          // Default: 48000 Hz
+  int32 channels = 3;             // 1 = Mono, 2 = Stereo
+  int32 bit_depth = 4;            // Default: 16-bit
+  int64 timestamp_ms = 5;         // Unix timestamp in milliseconds
+  string chunk_id = 6;            // Unique identifier for this chunk
+  bool is_final = 7;              // True if this is the last chunk in stream
+  AudioFormat format = 8;         // Audio encoding format
+}
+
+enum AudioFormat {
+  PCM_16_LE = 0;                  // Default: 16-bit PCM Little Endian
+  PCM_24_LE = 1;
+  PCM_32_LE = 2;
+  FLOAT_32_LE = 3;
+}
+
+// Transcription response from STT engine
+message TranscriptionResponse {
+  string text = 1;                // Transcribed text
+  float confidence = 2;           // Confidence score (0.0 - 1.0)
+  int64 timestamp_start_ms = 3;   // Start time of transcription
+  int64 timestamp_end_ms = 4;     // End time of transcription
+  string language = 5;            // Detected language (ISO 639-1)
+  bool is_partial = 6;            // True if transcription is still in progress
+  repeated Word words = 7;        // Word-level timestamps
+  TranscriptionMetadata metadata = 8;
+}
+
+message Word {
+  string text = 1;
+  float confidence = 2;
+  int64 start_ms = 3;
+  int64 end_ms = 4;
+}
+
+message TranscriptionMetadata {
+  float processing_time_ms = 1;  // Time taken to process
+  string model_version = 2;       // e.g., "whisper-large-v3"
+  float wer_estimate = 3;         // Word Error Rate estimate
+  bool vad_detected = 4;          // Voice Activity Detection result
+}
+
+// Audio device information (Windows WASAPI)
+message AudioDeviceList {
+  repeated AudioDevice devices = 1;
+}
+
+message AudioDevice {
+  string device_id = 1;           // WASAPI device ID
+  string device_name = 2;         // Friendly name
+  DeviceType device_type = 3;     // Input/Output/Loopback
+  bool is_default = 4;            // Is system default device
+  int32 max_channels = 5;
+  repeated int32 supported_sample_rates = 6;
+}
+
+enum DeviceType {
+  INPUT = 0;                      // Microphone
+  OUTPUT = 1;                     // Speakers
+  LOOPBACK = 2;                   // System audio capture (Windows)
+}
+
+// NLP Insights
+message TranscriptionText {
+  string text = 1;
+  string language = 2;
+  int64 timestamp_ms = 3;
+}
+
+message KeywordList {
+  repeated Keyword keywords = 1;
+}
+
+message Keyword {
+  string keyword = 1;
+  float relevance_score = 2;      // 0.0 - 1.0
+  int32 frequency = 3;
+}
+
+message SpeakerSegments {
+  repeated SpeakerSegment segments = 1;
+}
+
+message SpeakerSegment {
+  string speaker_id = 1;          // e.g., "SPEAKER_00"
+  int64 start_ms = 2;
+  int64 end_ms = 3;
+  float confidence = 4;
+}
+
+message SimilarityRequest {
+  string text1 = 1;
+  string text2 = 2;
+}
+
+message SimilarityResponse {
+  float similarity_score = 1;     // Cosine similarity (0.0 - 1.0)
+  string method = 2;              // e.g., "sentence-bert"
+}
+
+// Summary
+message SummaryRequest {
+  string text = 1;
+  int32 max_length = 2;           // Maximum summary length in words
+  SummaryStyle style = 3;
+}
+
+enum SummaryStyle {
+  CONCISE = 0;                    // Brief overview
+  DETAILED = 1;                   // Comprehensive summary
+  BULLET_POINTS = 2;              // Key points list
+}
+
+message SummaryResponse {
+  string summary = 1;
+  int32 compression_ratio = 2;    // Original/Summary length ratio
+  float coherence_score = 3;      // Quality metric (0.0 - 1.0)
+  repeated string key_points = 4;
+}
+
+message SummaryChunk {
+  string partial_summary = 1;
+  float progress = 2;             // 0.0 - 1.0
+  bool is_final = 3;
+}
+
+// Model information
+message ModelInfo {
+  string model_name = 1;          // e.g., "whisper-large-v3"
+  string version = 2;
+  repeated string supported_languages = 3;
+  bool gpu_enabled = 4;
+  string gpu_device = 5;          // e.g., "RTX 5080"
+  int64 memory_usage_mb = 6;
+}
+
+// Health status
+message HealthStatus {
+  bool is_healthy = 1;
+  string service_name = 2;
+  string version = 3;
+  int64 uptime_seconds = 4;
+  map<string, string> details = 5;
+}
+
+// =============================================================================
+// ERROR HANDLING
+// =============================================================================
+
+message ErrorResponse {
+  ErrorCode code = 1;
+  string message = 2;
+  string detail = 3;
+  int64 timestamp_ms = 4;
+}
+
+enum ErrorCode {
+  UNKNOWN = 0;
+  INVALID_AUDIO_FORMAT = 1;
+  DEVICE_NOT_FOUND = 2;
+  TRANSCRIPTION_FAILED = 3;
+  MODEL_NOT_LOADED = 4;
+  RATE_LIMIT_EXCEEDED = 5;
+  INSUFFICIENT_MEMORY = 6;
+  GPU_ERROR = 7;
+}

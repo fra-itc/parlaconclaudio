@@ -1,0 +1,715 @@
+openapi: 3.0.3
+info:
+  title: Real-Time STT Orchestrator API
+  description: |
+    REST API for the Real-Time Speech-to-Text system with ORCHIDEA framework integration.
+    This API provides endpoints for system management, configuration, and monitoring.
+
+    For real-time transcription, use the WebSocket API (see websocket_schemas.json).
+  version: 1.0.0
+  contact:
+    name: RTSTT Team
+  license:
+    name: MIT
+
+servers:
+  - url: http://localhost:8000/api/v1
+    description: Local development server
+  - url: http://localhost:8000
+    description: Local root
+
+tags:
+  - name: System
+    description: System health and information
+  - name: Devices
+    description: Audio device management
+  - name: Sessions
+    description: Transcription session management
+  - name: Configuration
+    description: System configuration
+  - name: Metrics
+    description: Performance metrics and monitoring
+  - name: ORCHIDEA
+    description: ORCHIDEA framework orchestration
+
+paths:
+  /health:
+    get:
+      tags: [System]
+      summary: Health check
+      description: Returns the health status of all system components
+      operationId: getHealth
+      responses:
+        '200':
+          description: System is healthy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthStatus'
+        '503':
+          description: System is unhealthy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthStatus'
+
+  /info:
+    get:
+      tags: [System]
+      summary: System information
+      description: Returns system version, configuration, and capabilities
+      operationId: getSystemInfo
+      responses:
+        '200':
+          description: System information
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SystemInfo'
+
+  /devices:
+    get:
+      tags: [Devices]
+      summary: List audio devices
+      description: Returns all available audio devices (WASAPI on Windows)
+      operationId: listDevices
+      parameters:
+        - name: type
+          in: query
+          description: Filter by device type
+          schema:
+            type: string
+            enum: [input, output, loopback, all]
+            default: all
+      responses:
+        '200':
+          description: List of audio devices
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeviceList'
+
+  /devices/{device_id}:
+    get:
+      tags: [Devices]
+      summary: Get device details
+      description: Returns detailed information about a specific audio device
+      operationId: getDevice
+      parameters:
+        - name: device_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Device details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AudioDevice'
+        '404':
+          description: Device not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /sessions:
+    get:
+      tags: [Sessions]
+      summary: List transcription sessions
+      description: Returns all transcription sessions (active and historical)
+      operationId: listSessions
+      parameters:
+        - name: status
+          in: query
+          description: Filter by session status
+          schema:
+            type: string
+            enum: [active, completed, failed, all]
+            default: all
+        - name: limit
+          in: query
+          description: Maximum number of sessions to return
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+        - name: offset
+          in: query
+          description: Number of sessions to skip
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+      responses:
+        '200':
+          description: List of sessions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessionList'
+
+    post:
+      tags: [Sessions]
+      summary: Create transcription session
+      description: Creates a new transcription session (alternative to WebSocket)
+      operationId: createSession
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SessionCreateRequest'
+      responses:
+        '201':
+          description: Session created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Session'
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /sessions/{session_id}:
+    get:
+      tags: [Sessions]
+      summary: Get session details
+      description: Returns detailed information about a transcription session
+      operationId: getSession
+      parameters:
+        - name: session_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Session details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Session'
+        '404':
+          description: Session not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    delete:
+      tags: [Sessions]
+      summary: Stop and delete session
+      description: Stops an active session and optionally deletes its data
+      operationId: deleteSession
+      parameters:
+        - name: session_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: keep_data
+          in: query
+          description: Keep session data after stopping
+          schema:
+            type: boolean
+            default: true
+      responses:
+        '204':
+          description: Session stopped and deleted
+        '404':
+          description: Session not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /sessions/{session_id}/transcript:
+    get:
+      tags: [Sessions]
+      summary: Get session transcript
+      description: Returns the full transcript for a session
+      operationId: getTranscript
+      parameters:
+        - name: session_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: format
+          in: query
+          description: Output format
+          schema:
+            type: string
+            enum: [json, text, srt, vtt]
+            default: json
+      responses:
+        '200':
+          description: Transcript
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Transcript'
+            text/plain:
+              schema:
+                type: string
+            application/x-subrip:
+              schema:
+                type: string
+        '404':
+          description: Session not found
+
+  /sessions/{session_id}/summary:
+    get:
+      tags: [Sessions]
+      summary: Get session summary
+      description: Returns the generated summary for a session
+      operationId: getSummary
+      parameters:
+        - name: session_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Summary
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Summary'
+        '404':
+          description: Session or summary not found
+
+  /config:
+    get:
+      tags: [Configuration]
+      summary: Get configuration
+      description: Returns current system configuration
+      operationId: getConfig
+      responses:
+        '200':
+          description: Configuration
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Configuration'
+
+    put:
+      tags: [Configuration]
+      summary: Update configuration
+      description: Updates system configuration (requires restart)
+      operationId: updateConfig
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConfigurationUpdate'
+      responses:
+        '200':
+          description: Configuration updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Configuration'
+        '400':
+          description: Invalid configuration
+
+  /metrics:
+    get:
+      tags: [Metrics]
+      summary: Get system metrics
+      description: Returns real-time performance metrics
+      operationId: getMetrics
+      responses:
+        '200':
+          description: Metrics
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Metrics'
+
+  /metrics/prometheus:
+    get:
+      tags: [Metrics]
+      summary: Prometheus metrics
+      description: Returns metrics in Prometheus format
+      operationId: getPrometheusMetrics
+      responses:
+        '200':
+          description: Prometheus metrics
+          content:
+            text/plain:
+              schema:
+                type: string
+
+  /orchidea/workflow:
+    get:
+      tags: [ORCHIDEA]
+      summary: Get current workflow status
+      description: Returns ORCHIDEA workflow telemetry and phase status
+      operationId: getWorkflowStatus
+      responses:
+        '200':
+          description: Workflow status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ORCHIDEAWorkflow'
+
+  /orchidea/agents:
+    get:
+      tags: [ORCHIDEA]
+      summary: List ORCHIDEA agents
+      description: Returns all configured agents (Master Orchestrator + Teams)
+      operationId: listAgents
+      responses:
+        '200':
+          description: Agent list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AgentList'
+
+  /orchidea/metrics:
+    get:
+      tags: [ORCHIDEA]
+      summary: Get ORCHIDEA metrics
+      description: Returns PUII alignment metrics and quality gates
+      operationId: getORCHIDEAMetrics
+      responses:
+        '200':
+          description: ORCHIDEA metrics
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ORCHIDEAMetrics'
+
+components:
+  schemas:
+    HealthStatus:
+      type: object
+      required: [status, timestamp, services]
+      properties:
+        status:
+          type: string
+          enum: [healthy, degraded, unhealthy]
+        timestamp:
+          type: integer
+          format: int64
+        services:
+          type: object
+          additionalProperties:
+            type: object
+            required: [status]
+            properties:
+              status:
+                type: string
+                enum: [up, down, degraded]
+              message:
+                type: string
+              latency_ms:
+                type: number
+
+    SystemInfo:
+      type: object
+      required: [version, platform, capabilities]
+      properties:
+        version:
+          type: string
+          example: "1.0.0"
+        platform:
+          type: string
+          example: "Windows 11"
+        capabilities:
+          type: object
+          properties:
+            gpu_available:
+              type: boolean
+            gpu_name:
+              type: string
+              example: "RTX 5080"
+            cuda_version:
+              type: string
+            models:
+              type: array
+              items:
+                type: string
+              example: ["whisper-large-v3", "mistral-7b", "llama-3.2-8b"]
+
+    AudioDevice:
+      type: object
+      required: [device_id, device_name, device_type]
+      properties:
+        device_id:
+          type: string
+        device_name:
+          type: string
+        device_type:
+          type: string
+          enum: [input, output, loopback]
+        is_default:
+          type: boolean
+        max_channels:
+          type: integer
+        supported_sample_rates:
+          type: array
+          items:
+            type: integer
+
+    DeviceList:
+      type: object
+      required: [devices]
+      properties:
+        devices:
+          type: array
+          items:
+            $ref: '#/components/schemas/AudioDevice'
+
+    Session:
+      type: object
+      required: [session_id, status, created_at]
+      properties:
+        session_id:
+          type: string
+        status:
+          type: string
+          enum: [active, completed, failed, stopped]
+        device_id:
+          type: string
+        language:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        started_at:
+          type: string
+          format: date-time
+        ended_at:
+          type: string
+          format: date-time
+        duration_seconds:
+          type: integer
+        word_count:
+          type: integer
+        metrics:
+          type: object
+
+    SessionCreateRequest:
+      type: object
+      required: [device_id]
+      properties:
+        device_id:
+          type: string
+        language:
+          type: string
+          default: "auto"
+        enable_nlp:
+          type: boolean
+          default: true
+        enable_summary:
+          type: boolean
+          default: true
+        vad_threshold:
+          type: number
+          minimum: 0.0
+          maximum: 1.0
+          default: 0.5
+
+    SessionList:
+      type: object
+      required: [sessions, total, limit, offset]
+      properties:
+        sessions:
+          type: array
+          items:
+            $ref: '#/components/schemas/Session'
+        total:
+          type: integer
+        limit:
+          type: integer
+        offset:
+          type: integer
+
+    Transcript:
+      type: object
+      required: [session_id, segments]
+      properties:
+        session_id:
+          type: string
+        segments:
+          type: array
+          items:
+            type: object
+            properties:
+              text:
+                type: string
+              confidence:
+                type: number
+              start_ms:
+                type: integer
+              end_ms:
+                type: integer
+              words:
+                type: array
+                items:
+                  type: object
+
+    Summary:
+      type: object
+      required: [session_id, summary]
+      properties:
+        session_id:
+          type: string
+        summary:
+          type: string
+        compression_ratio:
+          type: number
+        key_points:
+          type: array
+          items:
+            type: string
+        coherence_score:
+          type: number
+
+    Configuration:
+      type: object
+      properties:
+        audio:
+          type: object
+          properties:
+            sample_rate:
+              type: integer
+              default: 48000
+            channels:
+              type: integer
+              default: 1
+            buffer_size_ms:
+              type: integer
+              default: 100
+        stt:
+          type: object
+          properties:
+            model:
+              type: string
+              default: "whisper-large-v3"
+            beam_size:
+              type: integer
+              default: 5
+            language:
+              type: string
+              default: "auto"
+        nlp:
+          type: object
+          properties:
+            enable_keywords:
+              type: boolean
+              default: true
+            enable_diarization:
+              type: boolean
+              default: true
+        summary:
+          type: object
+          properties:
+            max_length:
+              type: integer
+              default: 150
+            style:
+              type: string
+              enum: [concise, detailed, bullet_points]
+              default: "concise"
+
+    ConfigurationUpdate:
+      type: object
+      description: Partial configuration update
+
+    Metrics:
+      type: object
+      properties:
+        uptime_seconds:
+          type: integer
+        active_sessions:
+          type: integer
+        total_sessions:
+          type: integer
+        audio_latency_ms:
+          type: number
+        stt_latency_ms:
+          type: number
+        end_to_end_latency_ms:
+          type: number
+        gpu_utilization_percent:
+          type: number
+        gpu_memory_mb:
+          type: number
+        cpu_utilization_percent:
+          type: number
+
+    ORCHIDEAWorkflow:
+      type: object
+      properties:
+        current_phase:
+          type: string
+          enum: [planning, development, integration, testing, optimization, documentation, feedback]
+        phase_progress:
+          type: number
+          minimum: 0.0
+          maximum: 1.0
+        quality_gates:
+          type: object
+          additionalProperties:
+            type: boolean
+        human_interventions:
+          type: integer
+
+    AgentList:
+      type: object
+      properties:
+        agents:
+          type: array
+          items:
+            type: object
+            properties:
+              agent_id:
+                type: string
+              name:
+                type: string
+              type:
+                type: string
+              status:
+                type: string
+                enum: [idle, active, error]
+
+    ORCHIDEAMetrics:
+      type: object
+      properties:
+        puii_alignment:
+          type: number
+          description: Prompt-Understanding-Implementation-Improvement alignment score
+        validation_rate:
+          type: number
+        fabrication_incidents:
+          type: integer
+        workflow_overhead_percent:
+          type: number
+
+    Error:
+      type: object
+      required: [code, message]
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+        detail:
+          type: string
+        timestamp:
+          type: integer
+          format: int64

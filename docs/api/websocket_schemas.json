@@ -1,0 +1,480 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Real-Time STT WebSocket Protocol",
+  "description": "WebSocket message schemas for communication between Electron frontend and FastAPI backend",
+  "version": "1.0.0",
+
+  "definitions": {
+    "BaseMessage": {
+      "type": "object",
+      "required": ["type", "timestamp"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "description": "Message type identifier"
+        },
+        "timestamp": {
+          "type": "integer",
+          "description": "Unix timestamp in milliseconds"
+        },
+        "correlation_id": {
+          "type": "string",
+          "description": "Optional correlation ID for request/response matching"
+        }
+      }
+    },
+
+    "TranscriptionStartMessage": {
+      "allOf": [
+        { "$ref": "#/definitions/BaseMessage" }
+      ],
+      "properties": {
+        "type": { "const": "transcription_start" },
+        "payload": {
+          "type": "object",
+          "required": ["device_id"],
+          "properties": {
+            "device_id": {
+              "type": "string",
+              "description": "Audio device ID (from list_devices response)"
+            },
+            "language": {
+              "type": "string",
+              "default": "auto",
+              "description": "Target language (ISO 639-1) or 'auto' for detection"
+            },
+            "enable_nlp": {
+              "type": "boolean",
+              "default": true,
+              "description": "Enable NLP insights extraction"
+            },
+            "enable_summary": {
+              "type": "boolean",
+              "default": true,
+              "description": "Enable automatic summarization"
+            },
+            "vad_threshold": {
+              "type": "number",
+              "minimum": 0.0,
+              "maximum": 1.0,
+              "default": 0.5,
+              "description": "Voice Activity Detection threshold"
+            }
+          }
+        }
+      }
+    },
+
+    "TranscriptionStopMessage": {
+      "allOf": [
+        { "$ref": "#/definitions/BaseMessage" }
+      ],
+      "properties": {
+        "type": { "const": "transcription_stop" },
+        "payload": {
+          "type": "object",
+          "properties": {
+            "save_session": {
+              "type": "boolean",
+              "default": true,
+              "description": "Save session data before stopping"
+            }
+          }
+        }
+      }
+    },
+
+    "TranscriptionUpdateMessage": {
+      "allOf": [
+        { "$ref": "#/definitions/BaseMessage" }
+      ],
+      "properties": {
+        "type": { "const": "transcription_update" },
+        "payload": {
+          "type": "object",
+          "required": ["text", "confidence", "is_partial"],
+          "properties": {
+            "text": {
+              "type": "string",
+              "description": "Transcribed text (partial or final)"
+            },
+            "confidence": {
+              "type": "number",
+              "minimum": 0.0,
+              "maximum": 1.0,
+              "description": "Confidence score"
+            },
+            "is_partial": {
+              "type": "boolean",
+              "description": "True if transcription is still in progress"
+            },
+            "timestamp_start_ms": {
+              "type": "integer",
+              "description": "Start time of audio segment"
+            },
+            "timestamp_end_ms": {
+              "type": "integer",
+              "description": "End time of audio segment"
+            },
+            "language": {
+              "type": "string",
+              "description": "Detected language"
+            },
+            "words": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": ["text", "confidence", "start_ms", "end_ms"],
+                "properties": {
+                  "text": { "type": "string" },
+                  "confidence": { "type": "number" },
+                  "start_ms": { "type": "integer" },
+                  "end_ms": { "type": "integer" }
+                }
+              },
+              "description": "Word-level timestamps"
+            }
+          }
+        }
+      }
+    },
+
+    "NLPInsightsMessage": {
+      "allOf": [
+        { "$ref": "#/definitions/BaseMessage" }
+      ],
+      "properties": {
+        "type": { "const": "nlp_insights" },
+        "payload": {
+          "type": "object",
+          "required": ["keywords"],
+          "properties": {
+            "keywords": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": ["keyword", "relevance_score"],
+                "properties": {
+                  "keyword": { "type": "string" },
+                  "relevance_score": {
+                    "type": "number",
+                    "minimum": 0.0,
+                    "maximum": 1.0
+                  },
+                  "frequency": { "type": "integer" }
+                }
+              },
+              "description": "Extracted keywords with relevance scores"
+            },
+            "speakers": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": ["speaker_id", "start_ms", "end_ms"],
+                "properties": {
+                  "speaker_id": { "type": "string" },
+                  "start_ms": { "type": "integer" },
+                  "end_ms": { "type": "integer" },
+                  "confidence": { "type": "number" }
+                }
+              },
+              "description": "Speaker diarization segments"
+            },
+            "sentiment": {
+              "type": "object",
+              "properties": {
+                "label": {
+                  "type": "string",
+                  "enum": ["positive", "neutral", "negative"]
+                },
+                "score": {
+                  "type": "number",
+                  "minimum": 0.0,
+                  "maximum": 1.0
+                }
+              },
+              "description": "Sentiment analysis (optional)"
+            }
+          }
+        }
+      }
+    },
+
+    "SummaryUpdateMessage": {
+      "allOf": [
+        { "$ref": "#/definitions/BaseMessage" }
+      ],
+      "properties": {
+        "type": { "const": "summary_update" },
+        "payload": {
+          "type": "object",
+          "required": ["summary", "is_final"],
+          "properties": {
+            "summary": {
+              "type": "string",
+              "description": "Generated summary (partial or final)"
+            },
+            "is_final": {
+              "type": "boolean",
+              "description": "True if this is the final summary"
+            },
+            "compression_ratio": {
+              "type": "number",
+              "description": "Original/Summary length ratio"
+            },
+            "key_points": {
+              "type": "array",
+              "items": { "type": "string" },
+              "description": "Extracted key points"
+            },
+            "coherence_score": {
+              "type": "number",
+              "minimum": 0.0,
+              "maximum": 1.0,
+              "description": "Summary quality metric"
+            }
+          }
+        }
+      }
+    },
+
+    "ListDevicesMessage": {
+      "allOf": [
+        { "$ref": "#/definitions/BaseMessage" }
+      ],
+      "properties": {
+        "type": { "const": "list_devices" },
+        "payload": {
+          "type": "object",
+          "properties": {
+            "device_type": {
+              "type": "string",
+              "enum": ["input", "output", "loopback", "all"],
+              "default": "all"
+            }
+          }
+        }
+      }
+    },
+
+    "DeviceListMessage": {
+      "allOf": [
+        { "$ref": "#/definitions/BaseMessage" }
+      ],
+      "properties": {
+        "type": { "const": "device_list" },
+        "payload": {
+          "type": "object",
+          "required": ["devices"],
+          "properties": {
+            "devices": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": ["device_id", "device_name", "device_type"],
+                "properties": {
+                  "device_id": { "type": "string" },
+                  "device_name": { "type": "string" },
+                  "device_type": {
+                    "type": "string",
+                    "enum": ["input", "output", "loopback"]
+                  },
+                  "is_default": { "type": "boolean" },
+                  "max_channels": { "type": "integer" },
+                  "supported_sample_rates": {
+                    "type": "array",
+                    "items": { "type": "integer" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+
+    "StatusUpdateMessage": {
+      "allOf": [
+        { "$ref": "#/definitions/BaseMessage" }
+      ],
+      "properties": {
+        "type": { "const": "status_update" },
+        "payload": {
+          "type": "object",
+          "required": ["status"],
+          "properties": {
+            "status": {
+              "type": "string",
+              "enum": [
+                "idle",
+                "initializing",
+                "recording",
+                "processing",
+                "paused",
+                "error",
+                "stopped"
+              ]
+            },
+            "message": {
+              "type": "string",
+              "description": "Human-readable status message"
+            },
+            "metrics": {
+              "type": "object",
+              "properties": {
+                "latency_ms": { "type": "number" },
+                "gpu_usage_percent": { "type": "number" },
+                "gpu_memory_mb": { "type": "number" },
+                "cpu_usage_percent": { "type": "number" },
+                "buffer_fill_percent": { "type": "number" },
+                "words_per_minute": { "type": "number" }
+              },
+              "description": "Real-time performance metrics"
+            }
+          }
+        }
+      }
+    },
+
+    "ErrorMessage": {
+      "allOf": [
+        { "$ref": "#/definitions/BaseMessage" }
+      ],
+      "properties": {
+        "type": { "const": "error" },
+        "payload": {
+          "type": "object",
+          "required": ["code", "message"],
+          "properties": {
+            "code": {
+              "type": "string",
+              "enum": [
+                "DEVICE_NOT_FOUND",
+                "AUDIO_CAPTURE_FAILED",
+                "TRANSCRIPTION_ERROR",
+                "NLP_ERROR",
+                "SUMMARY_ERROR",
+                "RATE_LIMIT_EXCEEDED",
+                "INSUFFICIENT_RESOURCES",
+                "INVALID_REQUEST",
+                "INTERNAL_ERROR"
+              ]
+            },
+            "message": {
+              "type": "string",
+              "description": "Human-readable error message"
+            },
+            "detail": {
+              "type": "string",
+              "description": "Detailed error information for debugging"
+            },
+            "recoverable": {
+              "type": "boolean",
+              "default": false,
+              "description": "Whether the error is recoverable"
+            }
+          }
+        }
+      }
+    },
+
+    "PingMessage": {
+      "allOf": [
+        { "$ref": "#/definitions/BaseMessage" }
+      ],
+      "properties": {
+        "type": { "const": "ping" },
+        "payload": {
+          "type": "object",
+          "properties": {}
+        }
+      }
+    },
+
+    "PongMessage": {
+      "allOf": [
+        { "$ref": "#/definitions/BaseMessage" }
+      ],
+      "properties": {
+        "type": { "const": "pong" },
+        "payload": {
+          "type": "object",
+          "properties": {
+            "server_time": {
+              "type": "integer",
+              "description": "Server timestamp for latency calculation"
+            }
+          }
+        }
+      }
+    }
+  },
+
+  "oneOf": [
+    { "$ref": "#/definitions/TranscriptionStartMessage" },
+    { "$ref": "#/definitions/TranscriptionStopMessage" },
+    { "$ref": "#/definitions/TranscriptionUpdateMessage" },
+    { "$ref": "#/definitions/NLPInsightsMessage" },
+    { "$ref": "#/definitions/SummaryUpdateMessage" },
+    { "$ref": "#/definitions/ListDevicesMessage" },
+    { "$ref": "#/definitions/DeviceListMessage" },
+    { "$ref": "#/definitions/StatusUpdateMessage" },
+    { "$ref": "#/definitions/ErrorMessage" },
+    { "$ref": "#/definitions/PingMessage" },
+    { "$ref": "#/definitions/PongMessage" }
+  ],
+
+  "examples": [
+    {
+      "description": "Client starts transcription",
+      "message": {
+        "type": "transcription_start",
+        "timestamp": 1679865600000,
+        "correlation_id": "req-12345",
+        "payload": {
+          "device_id": "wasapi-loopback-0",
+          "language": "en",
+          "enable_nlp": true,
+          "enable_summary": true,
+          "vad_threshold": 0.5
+        }
+      }
+    },
+    {
+      "description": "Server sends transcription update",
+      "message": {
+        "type": "transcription_update",
+        "timestamp": 1679865601500,
+        "correlation_id": "req-12345",
+        "payload": {
+          "text": "Hello, this is a test transcription.",
+          "confidence": 0.95,
+          "is_partial": false,
+          "timestamp_start_ms": 1679865600000,
+          "timestamp_end_ms": 1679865601500,
+          "language": "en",
+          "words": [
+            { "text": "Hello", "confidence": 0.98, "start_ms": 0, "end_ms": 300 },
+            { "text": "this", "confidence": 0.96, "start_ms": 300, "end_ms": 500 }
+          ]
+        }
+      }
+    },
+    {
+      "description": "Server sends NLP insights",
+      "message": {
+        "type": "nlp_insights",
+        "timestamp": 1679865602000,
+        "payload": {
+          "keywords": [
+            { "keyword": "test", "relevance_score": 0.85, "frequency": 2 },
+            { "keyword": "transcription", "relevance_score": 0.92, "frequency": 1 }
+          ],
+          "speakers": [
+            { "speaker_id": "SPEAKER_00", "start_ms": 0, "end_ms": 1500, "confidence": 0.88 }
+          ]
+        }
+      }
+    }
+  ]
+}
