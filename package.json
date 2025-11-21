@@ -1,0 +1,86 @@
+{
+  "name": "orchidea-rtstt-frontend",
+  "version": "0.1.0",
+  "description": "ORCHIDEA Real-Time Speech-to-Text Frontend",
+  "main": "src/ui/desktop/main.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "electron .",
+    "dev": "concurrently \"npm run dev:vite\" \"npm run dev:electron\"",
+    "dev:vite": "vite",
+    "dev:electron": "cross-env NODE_ENV=development electron .",
+    "build": "tsc && vite build",
+    "build:electron": "electron-builder",
+    "build:all": "npm run build && npm run build:electron",
+    "preview": "vite preview",
+    "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
+    "type-check": "tsc --noEmit"
+  },
+  "dependencies": {
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "zustand": "^5.0.8"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.10",
+    "@types/react": "^18.3.3",
+    "@types/react-dom": "^18.3.0",
+    "@typescript-eslint/eslint-plugin": "^7.16.0",
+    "@typescript-eslint/parser": "^7.16.0",
+    "@vitejs/plugin-react": "^4.3.1",
+    "concurrently": "^9.2.1",
+    "cross-env": "^7.0.3",
+    "electron": "^31.2.0",
+    "electron-builder": "^25.1.8",
+    "eslint": "^8.57.0",
+    "eslint-plugin-react-hooks": "^4.6.2",
+    "eslint-plugin-react-refresh": "^0.4.8",
+    "typescript": "^5.5.3",
+    "vite": "^5.3.3"
+  },
+  "build": {
+    "appId": "com.orchidea.rtstt",
+    "productName": "ORCHIDEA RTSTT",
+    "directories": {
+      "output": "dist-electron"
+    },
+    "files": [
+      "dist/**/*",
+      "src/ui/desktop/main.js",
+      "src/ui/desktop/preload.js",
+      "assets/**/*"
+    ],
+    "win": {
+      "target": [
+        "nsis",
+        "portable"
+      ],
+      "icon": "assets/icon.ico"
+    },
+    "mac": {
+      "target": [
+        "dmg",
+        "zip"
+      ],
+      "category": "public.app-category.productivity",
+      "icon": "assets/icon.icns"
+    },
+    "linux": {
+      "target": [
+        "AppImage",
+        "deb"
+      ],
+      "category": "Utility",
+      "icon": "assets/icon.png"
+    }
+  },
+  "keywords": [
+    "orchidea",
+    "speech-to-text",
+    "electron",
+    "react",
+    "vite"
+  ],
+  "author": "ORCHIDEA Team",
+  "license": "MIT"
+}
