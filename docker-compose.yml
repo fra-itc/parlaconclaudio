@@ -179,6 +179,27 @@ services:
       - backend
       - stt-engine
 
+  # Redis Exporter for Prometheus
+  redis-exporter:
+    image: oliver006/redis_exporter:v1.55.0-alpine
+    container_name: rtstt-redis-exporter
+    restart: unless-stopped
+    ports:
+      - "9121:9121"
+    environment:
+      - REDIS_ADDR=redis://redis:6379
+      - REDIS_EXPORTER_CHECK_KEYS=*
+      - REDIS_EXPORTER_CHECK_SINGLE_KEYS=*
+    networks:
+      - rtstt_network
+    depends_on:
+      redis:
+        condition: service_healthy
+    command:
+      - '--redis.addr=redis://redis:6379'
+      - '--web.listen-address=:9121'
+      - '--web.telemetry-path=/metrics'
+
   # Grafana visualization
   grafana:
     image: grafana/grafana:10.2.2
@@ -191,14 +212,17 @@ services:
       - GF_SECURITY_ADMIN_PASSWORD=admin
       - GF_USERS_ALLOW_SIGN_UP=false
       - GF_SERVER_ROOT_URL=http://localhost:3001
+      - GF_INSTALL_PLUGINS=redis-datasource
     volumes:
       - ./infrastructure/monitoring/grafana/dashboards:/etc/grafana/provisioning/dashboards:ro
-      - ./infrastructure/monitoring/grafana/datasources:/etc/grafana/provisioning/datasources:ro
+      - ./infrastructure/monitoring/grafana/provisioning/datasources:/etc/grafana/provisioning/datasources:ro
+      - ./infrastructure/monitoring/grafana/provisioning/dashboards:/etc/grafana/provisioning/dashboards:ro
       - grafana_data:/var/lib/grafana
     networks:
       - rtstt_network
     depends_on:
       - prometheus
+      - redis-exporter
 
   # Redis Commander (optional - development only)
   redis-commander:
