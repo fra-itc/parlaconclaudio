@@ -1,0 +1,29 @@
+# Grafana Dashboard Provisioning Configuration
+# This file automatically imports dashboards into Grafana
+# Version: Grafana 10.2+
+
+apiVersion: 1
+
+providers:
+  # RTSTT Production Dashboards
+  - name: 'RTSTT Production Monitoring'
+    orgId: 1
+    folder: 'RTSTT'
+    type: file
+    disableDeletion: false
+    updateIntervalSeconds: 10
+    allowUiUpdates: true
+    options:
+      path: /etc/grafana/provisioning/dashboards
+      foldersFromFilesStructure: false
+
+  # Additional dashboard providers can be added here
+  # - name: 'Custom Dashboards'
+  #   orgId: 1
+  #   folder: 'Custom'
+  #   type: file
+  #   disableDeletion: false
+  #   updateIntervalSeconds: 30
+  #   allowUiUpdates: true
+  #   options:
+  #     path: /etc/grafana/provisioning/dashboards/custom
