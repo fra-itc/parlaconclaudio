@@ -27,6 +27,9 @@ from .audio_format import (
     apply_gain,
     get_audio_stats
 )
+from .vad_silero import SileroVAD
+from .vad_segmenter import VADSegmenter
+from .audio_service import AudioService, AudioServiceState
 
 __all__ = [
     # Buffer
@@ -51,6 +54,14 @@ __all__ = [
     'convert_float32_to_int16',
     'apply_gain',
     'get_audio_stats',
+
+    # VAD and Segmentation
+    'SileroVAD',
+    'VADSegmenter',
+
+    # Integrated Service
+    'AudioService',
+    'AudioServiceState',
 ]
 
 __version__ = '0.1.0'
