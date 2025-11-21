@@ -1,0 +1,84 @@
+# Development dependencies
+# Install with: pip install -r requirements/base.txt -r requirements/dev.txt
+
+# Include base dependencies
+-r base.txt
+
+# Testing framework
+pytest==7.4.3
+pytest-asyncio==0.21.1
+pytest-cov==4.1.0
+pytest-mock==3.12.0
+pytest-timeout==2.2.0
+pytest-xdist==3.5.0  # Parallel test execution
+hypothesis==6.92.1  # Property-based testing
+
+# Code formatting
+black==23.11.0
+isort==5.12.0
+autopep8==2.0.4
+
+# Linting
+flake8==6.1.0
+pylint==3.0.2
+flake8-docstrings==1.7.0
+flake8-bugbear==23.12.2
+flake8-comprehensions==3.14.0
+pep8-naming==0.13.3
+
+# Type checking
+mypy==1.7.0
+types-redis==4.6.0
+types-pyyaml==6.0.12
+types-protobuf==4.24.0
+types-requests==2.31.0
+
+# Security
+bandit==1.7.5
+safety==2.3.5
+
+# Pre-commit hooks
+pre-commit==3.5.0
+
+# Documentation
+mkdocs==1.5.3
+mkdocs-material==9.4.14
+mkdocstrings[python]==0.24.0
+pymdown-extensions==10.5
+
+# Profiling and debugging
+py-spy==0.3.14
+memory-profiler==0.61.0
+line-profiler==4.1.1
+pyinstrument==4.6.1
+
+# Load testing
+locust==2.18.0
+
+# Database inspection (for development)
+redis-cli-py==0.1.1
+
+# Code complexity
+radon==6.0.1
+xenon==0.9.1
+
+# Notebook support (for experiments)
+jupyter==1.0.0
+ipython==8.18.1
+ipykernel==6.27.1
+
+# Graph visualization
+graphviz==0.20.1
+pydot==1.4.2
+
+# API testing
+requests==2.31.0
+httpie==3.2.2
+
+# Mock data generation
+faker==20.1.0
+factory-boy==3.3.0
+
+# Performance monitoring
+py-cpuinfo==9.0.0
+gputil==1.4.0

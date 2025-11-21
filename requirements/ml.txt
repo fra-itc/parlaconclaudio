@@ -1,0 +1,63 @@
+# Machine Learning dependencies (STT, NLP, Summary)
+# Install with: pip install -r requirements/base.txt -r requirements/ml.txt
+# Note: Requires CUDA 12.1 and RTX 5080 GPU for optimal performance
+
+# Include base dependencies
+-r base.txt
+
+# PyTorch with CUDA 12.1 support
+--extra-index-url https://download.pytorch.org/whl/cu121
+torch==2.1.0+cu121
+torchaudio==2.1.0+cu121
+torchvision==0.16.0+cu121
+
+# STT Engine - Whisper
+openai-whisper==20231117
+faster-whisper==0.10.0
+
+# TensorRT for GPU optimization
+# Note: Install manually from NVIDIA if needed
+# tensorrt==8.6.1
+
+# NLP Models and Tools
+transformers==4.35.0
+sentence-transformers==2.2.2
+sentencepiece==0.1.99
+tokenizers==0.15.0
+
+# Keyword extraction
+keybert==0.8.3
+scikit-learn==1.3.2
+
+# Speaker diarization
+pyannote-audio==3.1.0
+pyannote-core==5.0.0
+speechbrain==0.5.16
+
+# Model optimization
+accelerate==0.25.0
+bitsandbytes==0.41.3
+optimum==1.15.0
+
+# ONNX runtime for inference
+onnx==1.15.0
+onnxruntime-gpu==1.16.0
+
+# Hugging Face Hub
+huggingface-hub==0.19.4
+
+# Text processing
+nltk==3.8.1
+spacy==3.7.2
+
+# Language detection
+langdetect==1.0.9
+pycld2==0.41
+
+# Metrics
+jiwer==3.0.3  # Word Error Rate calculation
+rouge-score==0.1.2  # Summary quality
+bert-score==0.3.13  # Semantic similarity
+
+# Memory optimization
+safetensors==0.4.1
