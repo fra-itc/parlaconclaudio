@@ -106,7 +106,7 @@ services:
       - ENVIRONMENT=production
       - REDIS_HOST=redis
       - REDIS_PORT=6379
-      - DEVICE=cpu
+      - DEVICE=cuda
       - HF_TOKEN=${HF_TOKEN}
     volumes:
       - ./models:/app/models
@@ -138,7 +138,7 @@ services:
       - REDIS_HOST=redis
       - REDIS_PORT=6379
       - MODEL_NAME=google/flan-t5-base
-      - DEVICE=cpu
+      - DEVICE=cuda
       - HF_TOKEN=${HF_TOKEN}
     volumes:
       - ./models:/app/models

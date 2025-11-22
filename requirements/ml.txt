@@ -1,15 +1,15 @@
 # Machine Learning dependencies (STT, NLP, Summary)
 # Install with: pip install -r requirements/base.txt -r requirements/ml.txt
-# Note: Requires CUDA 12.1 and RTX 5080 GPU for optimal performance
+# Note: Requires CUDA 12.8 and RTX 5080 GPU (Blackwell sm_120) for optimal performance
 
 # Include base dependencies
 -r base.txt
 
-# PyTorch with CUDA 12.1 support
---extra-index-url https://download.pytorch.org/whl/cu121
-torch==2.1.0+cu121
-torchaudio==2.1.0+cu121
-torchvision==0.16.0+cu121
+# PyTorch with CUDA 12.8 support for RTX 5080 (Blackwell architecture sm_120)
+--extra-index-url https://download.pytorch.org/whl/cu128
+torch==2.7.0+cu128
+torchaudio==2.7.0+cu128
+torchvision==0.20.0+cu128
 
 # STT Engine - Whisper
 openai-whisper==20231117
@@ -20,10 +20,10 @@ faster-whisper==0.10.0
 # tensorrt==8.6.1
 
 # NLP Models and Tools
-transformers==4.35.0
-sentence-transformers==2.2.2
+transformers==4.48.0
+sentence-transformers==2.3.0
 sentencepiece==0.1.99
-tokenizers==0.15.0
+tokenizers==0.21.0
 
 # Keyword extraction
 keybert==0.8.3
@@ -34,9 +34,9 @@ pyannote-audio==3.1.0
 pyannote-core==5.0.0
 speechbrain==0.5.16
 
-# Model optimization
-accelerate==0.25.0
-bitsandbytes==0.41.3
+# Model optimization (upgraded for PyTorch 2.7 and CUDA 12.8 compatibility)
+accelerate==1.2.0
+bitsandbytes==0.48.0
 optimum==1.15.0
 
 # ONNX runtime for inference
@@ -60,12 +60,12 @@ rouge-score==0.1.2  # Summary quality
 bert-score==0.3.13  # Semantic similarity
 
 # Memory optimization
-safetensors==0.4.1
+safetensors==0.4.3
 
 # gRPC and Protocol Buffers for service communication
-grpcio==1.60.0
-grpcio-tools==1.60.0
-protobuf==4.25.1
+grpcio==1.59.0
+grpcio-tools==1.59.0
+protobuf==4.25.0
 
 # Redis for message queuing and caching
 redis==5.0.1
