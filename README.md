@@ -74,8 +74,31 @@ This Proof of Concept (POC) demonstrates a production-grade real-time STT system
 - **Node.js**: 20.x (for Electron)
 - **Docker**: 24.0+ with NVIDIA Container Runtime
 - **Redis**: 7.2+
+- **HuggingFace Token**: Required for Llama and PyAnnote models
 
-### Installation
+### Automated Deployment (Recommended)
+
+For automated local deployment with parallel execution (**90 minutes total**), use the orchestration terminal:
+
+```bash
+# Review deployment plan (8-wave parallel execution)
+cat orchestration/deploy-local-terminal.md
+
+# Execute automated deployment
+# This will run 8 waves of parallel tasks:
+# 1. Fix Dockerfiles
+# 2. Setup Python/Node/Docker environments
+# 3. Configure .env and protobuf
+# 4. Build Docker images
+# 5. Download ML models (18GB with 8-bit Llama)
+# 6. Start all services
+# 7. Run test suite
+# 8. Validate deployment
+```
+
+See [orchestration/deploy-local-terminal.md](orchestration/deploy-local-terminal.md) for the complete automated deployment workflow.
+
+### Manual Installation
 
 #### 1. Clone Repository
 
@@ -100,18 +123,32 @@ pip install -r requirements/dev.txt
 
 #### 3. Download ML Models
 
+**Automated download with 8-bit quantization support:**
+
 ```bash
-# Whisper Large V3
-python scripts/download_whisper.py
+# Configure HuggingFace token first
+copy .env.example .env.local
+# Edit .env.local and add your HF_TOKEN
 
-# Silero VAD
-python scripts/download_silero_vad.py
+# Download all models (parallel, ~18GB)
+python scripts/download_models.py --use-8bit
 
-# NLP models (Mistral, Sentence-BERT, PyAnnote)
-python scripts/download_nlp_models.py
+# This downloads:
+# - Whisper Large V3 (2.9 GB)
+# - Silero VAD (80 MB)
+# - Sentence-BERT (250 MB)
+# - PyAnnote Speaker Diarization (requires HF_TOKEN)
+# - Llama-3.2-8B in 8-bit (8 GB instead of 15 GB)
+```
 
-# Summary model (Llama-3.2)
-python scripts/download_summary_model.py
+**Individual model downloads:**
+
+```bash
+# Whisper only
+python scripts/download_models.py --model whisper
+
+# Llama with 8-bit quantization
+python scripts/download_models.py --model llama --use-8bit
 ```
 
 #### 4. Configure Environment
@@ -122,9 +159,21 @@ copy .env.example .env
 
 # Edit .env with your configuration
 notepad .env
+
+# Important settings:
+# - HF_TOKEN=<your_token>  # Required for Llama and PyAnnote
+# - SUMMARY_MODEL_8BIT=true  # Use 8-bit Llama (saves 7GB VRAM)
+# - CUDA_VISIBLE_DEVICES=0
 ```
 
-#### 5. Start Services with Docker
+#### 5. Fix Dockerfiles (if needed)
+
+```bash
+# Automated fix for CMD paths
+python scripts/fix_dockerfiles.py
+```
+
+#### 6. Start Services with Docker
 
 ```bash
 # Start Redis + monitoring stack
@@ -137,7 +186,7 @@ docker-compose up -d stt-engine nlp-service summary-service
 docker-compose up -d backend
 ```
 
-#### 6. Install Electron Frontend
+#### 7. Install Electron Frontend
 
 ```bash
 cd src/ui/desktop
@@ -150,6 +199,11 @@ npm run build  # Production build
 ### Verify Installation
 
 ```bash
+# Automated health check (all services)
+python scripts/health_check.py
+
+# Or manual checks:
+
 # Check services health
 curl http://localhost:8000/health
 
@@ -252,17 +306,65 @@ pytest -n auto
 
 ### Performance Benchmarks
 
+#### Audio Capture Benchmarks
+
 ```bash
-# Latency benchmark
-python benchmarks/latency_test.py
+# Audio pipeline latency benchmark
+python benchmarks/audio_latency_benchmark.py
 
-# Throughput test
-python benchmarks/throughput_test.py
+# With custom duration
+python benchmarks/audio_latency_benchmark.py --duration 10.0
 
-# GPU memory profiling
-python benchmarks/gpu_memory_profile.py
+# Run benchmark tests
+pytest tests/unit/test_benchmarks.py -v
+```
 
-# Load test
+#### ML Model Benchmarks (GPU-Safe)
+
+For comprehensive ML model evaluation with GPU-safe sequential loading (**3.5 hours total**):
+
+```bash
+# Review benchmarking plan (6-wave sequential GPU execution)
+cat orchestration/benchmark-evaluation-terminal.md
+
+# Execute automated benchmarking
+# This will run 6 waves with GPU safety:
+# 1. Baseline measurements
+# 2. Model downloads and validation
+# 3. Whisper model tests (4 variants)
+# 4. LLM model tests (Llama, BART, T5)
+# 5. Hyperparameter tuning (180 combinations)
+# 6. Load testing
+```
+
+**CRITICAL GPU Safety Rules:**
+- ❌ **NEVER** load multiple models concurrently on GPU
+- ✅ **ALWAYS** use sequential loading: Load → Test → Unload → Clear → Wait → Next
+- Sequential loading enforced by `benchmarks/gpu_manager.py`
+
+**Individual benchmarks:**
+
+```bash
+# WER (Word Error Rate) calculation
+python benchmarks/wer_calculator.py \
+  --reference "reference transcript.txt" \
+  --hypothesis "generated transcript.txt"
+
+# GPU memory check before loading model
+python -c "from benchmarks.gpu_manager import GPUManager; \
+  gm = GPUManager(); \
+  gm.safe_load_check('whisper-large-v3')"
+
+# ML benchmark suite (when fully implemented)
+python benchmarks/ml_benchmark.py --model whisper-large-v3 --mode baseline
+```
+
+See [orchestration/benchmark-evaluation-terminal.md](orchestration/benchmark-evaluation-terminal.md) and [benchmarks/README.md](benchmarks/README.md) for complete benchmarking workflows.
+
+#### Load Testing
+
+```bash
+# Load test (when implemented)
 locust -f benchmarks/load_test.py --host http://localhost:8000
 ```
 

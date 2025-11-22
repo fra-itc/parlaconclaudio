@@ -1,15 +1,25 @@
-# RTSTT Audio Capture - Performance Benchmarks
+# RTSTT Performance Benchmarks
 
-Comprehensive benchmark suite for measuring audio capture system performance.
+Comprehensive benchmark suite for measuring system performance across audio capture, ML models, and end-to-end pipelines.
 
 ## Overview
 
 This benchmark suite measures:
+
+### Audio Capture Benchmarks
 - **Latency**: End-to-end pipeline latency
 - **Throughput**: Samples processed per second
 - **CPU Usage**: Average CPU utilization
 - **Memory Usage**: Memory allocation delta
 - **VAD Performance**: Voice Activity Detection processing speed
+
+### ML Model Benchmarks (NEW)
+- **WER/CER**: Word Error Rate and Character Error Rate for STT models
+- **ROUGE Scores**: Summary quality evaluation (ROUGE-1, ROUGE-2, ROUGE-L)
+- **GPU Memory Safety**: Sequential model loading with OOM prevention
+- **Model Latency**: Inference time per sample
+- **Throughput**: Real-time factor (RTF) measurement
+- **Hyperparameter Tuning**: Grid search across 180+ combinations
 
 ## Quick Start
 
@@ -227,4 +237,251 @@ Track performance over time by saving benchmark reports with timestamps:
 ```bash
 python benchmarks/audio_latency_benchmark.py \
     --output "benchmark_$(date +%Y%m%d_%H%M%S).txt"
+```
+
+---
+
+## ML Model Benchmarking Infrastructure
+
+### GPU Safety Manager
+
+**File**: `benchmarks/gpu_manager.py`
+
+Enforces **sequential GPU model loading** to prevent Out-of-Memory (OOM) errors on RTX 5080 (16GB VRAM).
+
+**Key Features:**
+- Memory requirement tracking for all models
+- Pre-load safety checks with 1GB safety margin
+- Automatic cleanup between model loads
+- Explicit wait periods for GPU memory release
+
+**Critical GPU Safety Rules:**
+```python
+# ❌ NEVER DO THIS (concurrent loading will cause OOM)
+whisper_model = load_whisper()  # 3.2 GB
+llama_model = load_llama()      # 8.5 GB  ← OOM!
+
+# ✅ ALWAYS DO THIS (sequential with cleanup)
+whisper_model = gpu_manager.safe_load("whisper-large-v3")
+results = test_whisper(whisper_model)
+del whisper_model
+torch.cuda.empty_cache()
+time.sleep(2)  # Wait for GPU memory release
+
+llama_model = gpu_manager.safe_load("llama-3.2-8b")
+results = test_llama(llama_model)
+gpu_manager.unload_all_models(wait_seconds=3)
+```
+
+**Usage:**
+```python
+from benchmarks.gpu_manager import GPUManager
+
+gpu_mgr = GPUManager()
+
+# Check if safe to load model
+gpu_mgr.safe_load_check("whisper-large-v3", required_mb=3200)
+
+# Get current GPU status
+status = gpu_mgr.get_gpu_status()
+print(f"Free VRAM: {status['free_mb']} MB")
+
+# Track loaded models
+gpu_mgr.track_model("whisper-large-v3", 3200)
+
+# Cleanup all models
+gpu_mgr.unload_all_models(wait_seconds=3)
+```
+
+**Model Memory Requirements:**
+| Model | VRAM (MB) | Precision |
+|-------|-----------|-----------|
+| Whisper Large V3 | 3,200 | FP16 |
+| Whisper Medium | 1,500 | FP16 |
+| Distil-Whisper Large V3 | 1,600 | FP16 |
+| Llama-3.2-8B (8-bit) | 8,500 | INT8 |
+| Llama-3.2-8B (FP16) | 15,000 | FP16 |
+| BART Large | 1,600 | FP16 |
+| T5 Base | 900 | FP16 |
+
+**Safety Margin**: Always keeps 1GB (1000 MB) free VRAM
+
+---
+
+### WER Calculator
+
+**File**: `benchmarks/wer_calculator.py`
+
+Calculates **Word Error Rate (WER)** and **Character Error Rate (CER)** using Levenshtein distance algorithm.
+
+**Features:**
+- Levenshtein distance with operation tracking (substitutions, deletions, insertions)
+- Optional text normalization (lowercase, punctuation removal, whitespace)
+- Support for batch processing
+- Detailed metrics including operation counts
+
+**Usage:**
+```python
+from benchmarks.wer_calculator import calculate_wer, WERMetrics
+
+# Basic usage
+reference = "the quick brown fox jumps over the lazy dog"
+hypothesis = "the quik brown fox jumped over a lazy dog"
+
+metrics = calculate_wer(reference, hypothesis, normalize=True)
+
+print(f"WER: {metrics.wer:.2%}")
+print(f"CER: {metrics.cer:.2%}")
+print(f"Substitutions: {metrics.substitutions}")
+print(f"Deletions: {metrics.deletions}")
+print(f"Insertions: {metrics.insertions}")
+```
+
+**CLI Usage:**
+```bash
+# Calculate WER from files
+python benchmarks/wer_calculator.py \
+  --reference data/reference.txt \
+  --hypothesis outputs/hypothesis.txt \
+  --normalize
+
+# From strings
+python benchmarks/wer_calculator.py \
+  --ref-text "the quick brown fox" \
+  --hyp-text "the quik brown fox" \
+  --normalize
+```
+
+**Normalization Options:**
+- Convert to lowercase
+- Remove punctuation
+- Normalize whitespace
+- Remove extra spaces
+
+**Output Metrics:**
+```python
+@dataclass
+class WERMetrics:
+    wer: float              # Word Error Rate (0.0 to 1.0+)
+    cer: float              # Character Error Rate (0.0 to 1.0+)
+    reference_words: int    # Number of words in reference
+    hypothesis_words: int   # Number of words in hypothesis
+    substitutions: int      # Word substitutions
+    deletions: int          # Word deletions
+    insertions: int         # Word insertions
+    distance: int           # Levenshtein distance
+```
+
+---
+
+### ML Benchmark Orchestrator
+
+**File**: `benchmarks/ml_benchmark.py`
+
+Main orchestrator for comprehensive ML model benchmarking (currently a stub, full implementation pending).
+
+**Planned Features:**
+- Whisper model variants (Large V3, Medium, Distil-Whisper)
+- LLM summarization models (Llama, BART, T5)
+- Hyperparameter tuning with grid search
+- Performance profiling (latency, throughput, GPU memory)
+- Results export to JSON/SQLite
+
+**Future Usage:**
+```bash
+# Run baseline benchmark
+python benchmarks/ml_benchmark.py --model whisper-large-v3 --mode baseline
+
+# Compare models
+python benchmarks/ml_benchmark.py --model distil-whisper-large-v3 --compare-to baseline.json
+
+# Hyperparameter tuning
+python benchmarks/ml_benchmark.py --mode tune --params beam_size temperature
+
+# Full evaluation suite
+python benchmarks/ml_benchmark.py --mode full --output results.json
+```
+
+**Components to integrate:**
+1. `gpu_manager.py` - Safe model loading
+2. `wer_calculator.py` - STT evaluation
+3. ROUGE calculator - Summary evaluation (TODO)
+4. Model loading/unloading logic (TODO)
+5. Benchmark orchestration (TODO)
+
+---
+
+### Automated Benchmarking Workflow
+
+**File**: `orchestration/benchmark-evaluation-terminal.md`
+
+Complete benchmarking workflow with **6 waves of GPU-safe sequential execution** (~3.5 hours).
+
+**Wave Structure:**
+1. **Baseline Measurements** (10 min) - System metrics, GPU baseline
+2. **Model Downloads** (45 min) - Validate all models downloaded
+3. **Whisper Tests** (60 min) - 4 Whisper variants sequentially
+4. **LLM Tests** (60 min) - Llama, BART, T5 sequentially
+5. **Hyperparameter Tuning** (30 min) - 180 combinations
+6. **Load Testing** (15 min) - Concurrent request handling
+
+**GPU Safety Enforcement:**
+```
+WAVE 3: Whisper Model Tests (60 min - SEQUENTIAL)
+├─ Test Whisper Large V3
+│  ├─ Load model (3.2 GB)
+│  ├─ Run benchmarks
+│  ├─ Unload + clear cache
+│  └─ Wait 2 seconds
+├─ Test Whisper Medium
+│  ├─ Load model (1.5 GB)
+│  ├─ Run benchmarks
+│  ├─ Unload + clear cache
+│  └─ Wait 2 seconds
+...
+```
+
+**Test Matrix:**
+- 8 ML models total
+- 180 hyperparameter combinations
+- 5 test datasets
+- WER, ROUGE, latency, GPU memory metrics
+
+**Results Storage:**
+- JSON exports
+- SQLite database (TODO)
+- HTML reports (TODO)
+- Grafana dashboards (TODO)
+
+---
+
+## Benchmarking Best Practices
+
+### For Audio Benchmarks
+1. Close other applications to reduce noise
+2. Use consistent test duration (5-10 seconds)
+3. Run multiple iterations and average results
+4. Monitor CPU/memory during tests
+
+### For ML Benchmarks
+1. **NEVER** load multiple models on GPU concurrently
+2. **ALWAYS** use `gpu_manager.safe_load_check()` before loading
+3. **ALWAYS** cleanup between models: `del model; torch.cuda.empty_cache(); time.sleep(2)`
+4. Monitor GPU temperature and throttling
+5. Use 8-bit quantization when possible (Llama: 15GB → 8GB)
+6. Validate models downloaded before benchmarking
+7. Use consistent test datasets across runs
+
+### GPU Memory Budget (RTX 5080 16GB)
+```
+Total VRAM:           16,000 MB
+Safety Margin:        -1,000 MB
+Available for models: 15,000 MB
+
+Safe Configurations:
+✅ Whisper Large V3 (3,200 MB) + overhead → 4,200 MB
+✅ Llama 8-bit (8,500 MB) + overhead → 9,500 MB
+✅ BART Large (1,600 MB) + Whisper Medium (1,500 MB) → 3,100 MB
+❌ Whisper Large V3 + Llama 8-bit → 11,700 MB (risky, use sequential)
+❌ Llama FP16 (15,000 MB) → OOM (use 8-bit instead)
 ```
