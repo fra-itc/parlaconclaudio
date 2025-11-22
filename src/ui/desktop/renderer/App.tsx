@@ -1,6 +1,15 @@
-import React from 'react';
+import React, { useState } from 'react';
+import TranscriptionPanel from './components/TranscriptionPanel';
+import InsightsPanel from './components/InsightsPanel';
+import SummaryPanel from './components/SummaryPanel';
+import SettingsPanel from './components/SettingsPanel';
+import TestPanelsWithMockData from './components/TestPanelsWithMockData';
+
+type View = 'live' | 'demo' | 'settings';
 
 const App: React.FC = () => {
+  const [view, setView] = useState<View>('demo');
+
   const styles = {
     container: {
       display: 'flex',
@@ -30,6 +39,21 @@ const App: React.FC = () => {
       fontSize: '12px',
       color: '#858585',
     },
+    nav: {
+      display: 'flex',
+      gap: '8px',
+    },
+    navButton: (active: boolean) => ({
+      padding: '8px 16px',
+      backgroundColor: active ? '#0e639c' : '#3e3e42',
+      color: active ? '#ffffff' : '#cccccc',
+      border: 'none',
+      borderRadius: '4px',
+      cursor: 'pointer',
+      fontSize: '13px',
+      fontWeight: 500,
+      transition: 'all 0.2s',
+    }),
     main: {
       display: 'flex',
       flex: 1,
@@ -39,23 +63,22 @@ const App: React.FC = () => {
       flex: 1,
       display: 'flex',
       flexDirection: 'column' as const,
-      padding: '20px',
-      overflow: 'auto',
+      overflow: 'hidden',
     },
-    placeholder: {
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      flex: 1,
-      border: '2px dashed #3e3e42',
+    liveLayout: {
+      display: 'grid',
+      gridTemplateColumns: '1fr 1fr',
+      gridTemplateRows: '1fr 1fr',
+      gap: '16px',
+      padding: '16px',
+      height: '100%',
+      overflow: 'hidden',
+    },
+    panelContainer: {
+      backgroundColor: '#252526',
       borderRadius: '8px',
-      padding: '40px',
-      textAlign: 'center' as const,
-    },
-    placeholderText: {
-      fontSize: '16px',
-      color: '#858585',
-      lineHeight: '1.6',
+      border: '1px solid #3e3e42',
+      overflow: 'hidden',
     },
     footer: {
       display: 'flex',
@@ -73,51 +96,126 @@ const App: React.FC = () => {
       alignItems: 'center',
       gap: '8px',
     },
-    statusDot: {
+    statusDot: (connected: boolean) => ({
       width: '8px',
       height: '8px',
       borderRadius: '50%',
-      backgroundColor: '#4caf50',
-    },
+      backgroundColor: connected ? '#4caf50' : '#858585',
+    }),
+  };
+
+  const renderContent = () => {
+    switch (view) {
+      case 'demo':
+        return <TestPanelsWithMockData />;
+
+      case 'live':
+        return (
+          <div style={styles.liveLayout}>
+            <div style={styles.panelContainer}>
+              <TranscriptionPanel />
+            </div>
+            <div style={styles.panelContainer}>
+              <InsightsPanel />
+            </div>
+            <div style={styles.panelContainer}>
+              <SummaryPanel />
+            </div>
+            <div style={styles.panelContainer}>
+              <SettingsPanel />
+            </div>
+          </div>
+        );
+
+      case 'settings':
+        return (
+          <div style={{ padding: '16px', height: '100%' }}>
+            <SettingsPanel />
+          </div>
+        );
+
+      default:
+        return null;
+    }
   };
 
   return (
     <div style={styles.container}>
       {/* Header */}
       <header style={styles.header}>
-        <h1 style={styles.title}>ORCHIDEA RTSTT</h1>
-        <span style={styles.version}>v0.1.0-alpha</span>
+        <div>
+          <h1 style={styles.title}>ORCHIDEA RTSTT</h1>
+        </div>
+
+        <nav style={styles.nav}>
+          <button
+            style={styles.navButton(view === 'demo')}
+            onClick={() => setView('demo')}
+            onMouseOver={(e) => {
+              if (view !== 'demo') {
+                e.currentTarget.style.backgroundColor = '#4e4e52';
+              }
+            }}
+            onMouseOut={(e) => {
+              if (view !== 'demo') {
+                e.currentTarget.style.backgroundColor = '#3e3e42';
+              }
+            }}
+          >
+            Demo
+          </button>
+          <button
+            style={styles.navButton(view === 'live')}
+            onClick={() => setView('live')}
+            onMouseOver={(e) => {
+              if (view !== 'live') {
+                e.currentTarget.style.backgroundColor = '#4e4e52';
+              }
+            }}
+            onMouseOut={(e) => {
+              if (view !== 'live') {
+                e.currentTarget.style.backgroundColor = '#3e3e42';
+              }
+            }}
+          >
+            Live
+          </button>
+          <button
+            style={styles.navButton(view === 'settings')}
+            onClick={() => setView('settings')}
+            onMouseOver={(e) => {
+              if (view !== 'settings') {
+                e.currentTarget.style.backgroundColor = '#4e4e52';
+              }
+            }}
+            onMouseOut={(e) => {
+              if (view !== 'settings') {
+                e.currentTarget.style.backgroundColor = '#3e3e42';
+              }
+            }}
+          >
+            Settings
+          </button>
+        </nav>
+
+        <span style={styles.version}>v1.0.0-POC</span>
       </header>
 
       {/* Main Content Area */}
       <main style={styles.main}>
         <div style={styles.contentArea}>
-          <div style={styles.placeholder}>
-            <div>
-              <h2 style={styles.placeholderText}>
-                <strong>ORCHIDEA Real-Time STT</strong>
-              </h2>
-              <p style={styles.placeholderText}>
-                React base setup complete.
-                <br />
-                UI panels and components will be added in the next steps.
-              </p>
-              <p style={styles.placeholderText}>
-                <em>Audio Waveform | Controls | Transcription Display</em>
-              </p>
-            </div>
-          </div>
+          {renderContent()}
         </div>
       </main>
 
       {/* Footer */}
       <footer style={styles.footer}>
         <div style={styles.statusItem}>
-          <div style={styles.statusDot}></div>
-          <span>Ready</span>
+          <div style={styles.statusDot(view === 'demo')}></div>
+          <span>{view === 'demo' ? 'Demo Mode' : view === 'live' ? 'Live Mode' : 'Settings'}</span>
         </div>
         <div>
-          <span>Electron + React + Vite</span>
+          <span>Electron + React + Vite | ORCHIDEA Framework v1.3</span>
         </div>
       </footer>
     </div>
