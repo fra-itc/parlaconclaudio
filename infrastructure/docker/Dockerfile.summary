@@ -35,7 +35,7 @@ RUN pip install --no-cache-dir --upgrade pip setuptools wheel && \
         grpcio-tools==1.59.0 \
         protobuf==4.25.0 \
         sentencepiece==0.1.99 \
-        tokenizers==0.15.0 \
+        tokenizers==0.14.1 \
         safetensors==0.4.1
 
 # Stage 2: Runtime - Production image with CUDA support
@@ -56,9 +56,8 @@ RUN update-alternatives --install /usr/bin/python python /usr/bin/python3.11 1 &
 # Set working directory
 WORKDIR /app
 
-# Copy virtual environment from builder
-COPY --from=builder /opt/venv /opt/venv
-ENV PATH="/opt/venv/bin:$PATH"
+# Copy installed packages from builder's venv to system Python
+COPY --from=builder /opt/venv/lib/python3.11/site-packages/ /usr/local/lib/python3.11/dist-packages/
 
 # Copy application source code
 COPY src/ /app/src/

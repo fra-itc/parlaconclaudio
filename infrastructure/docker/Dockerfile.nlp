@@ -38,10 +38,10 @@ RUN pip install --no-cache-dir --upgrade pip setuptools wheel && \
         protobuf==4.25.0 \
         nltk==3.8.1 \
         sentencepiece==0.1.99 \
-        tokenizers==0.15.0
+        tokenizers==0.14.1
 
-# Download spaCy model
-RUN python -m spacy download en_core_web_sm
+# Download spaCy model via pip (more reliable)
+RUN pip install --no-cache-dir https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.7.0/en_core_web_sm-3.7.0-py3-none-any.whl
 
 # Stage 2: Runtime - Production image with CUDA support
 FROM nvidia/cuda:12.1.0-runtime-ubuntu22.04
@@ -61,9 +61,8 @@ RUN update-alternatives --install /usr/bin/python python /usr/bin/python3.11 1 &
 # Set working directory
 WORKDIR /app
 
-# Copy virtual environment from builder
-COPY --from=builder /opt/venv /opt/venv
-ENV PATH="/opt/venv/bin:$PATH"
+# Copy installed packages from builder's venv to system Python
+COPY --from=builder /opt/venv/lib/python3.11/site-packages/ /usr/local/lib/python3.11/dist-packages/
 
 # Copy application source code
 COPY src/ /app/src/

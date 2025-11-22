@@ -13,6 +13,14 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     g++ \
     make \
     git \
+    pkg-config \
+    libavcodec-dev \
+    libavformat-dev \
+    libavutil-dev \
+    libavdevice-dev \
+    libavfilter-dev \
+    libswscale-dev \
+    libswresample-dev \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy requirements
@@ -30,7 +38,16 @@ RUN pip install --no-cache-dir --upgrade pip setuptools wheel && \
         torchaudio==2.1.0+cu121 && \
     pip install --no-cache-dir \
         openai-whisper==20231117 \
-        faster-whisper==0.10.0 \
+        "faster-whisper==0.10.0" --no-deps && \
+    pip install --no-cache-dir \
+        "av==11.*" \
+        "ctranslate2>=3.24.0" \
+        "tokenizers>=0.13,<0.16" \
+        "onnxruntime>=1.14,<2" \
+        more-itertools \
+        numba \
+        huggingface-hub \
+        tiktoken \
         grpcio==1.59.0 \
         grpcio-tools==1.59.0 \
         protobuf==4.25.0
@@ -55,9 +72,8 @@ RUN update-alternatives --install /usr/bin/python python /usr/bin/python3.11 1 &
 # Set working directory
 WORKDIR /app
 
-# Copy virtual environment from builder
-COPY --from=builder /opt/venv /opt/venv
-ENV PATH="/opt/venv/bin:$PATH"
+# Copy installed packages from builder's venv to system Python
+COPY --from=builder /opt/venv/lib/python3.11/site-packages/ /usr/local/lib/python3.11/dist-packages/
 
 # Copy application source code
 COPY src/ /app/src/
