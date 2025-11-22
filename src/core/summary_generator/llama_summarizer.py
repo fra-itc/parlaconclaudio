@@ -22,7 +22,7 @@ from typing import Optional, Dict, Any, List
 import torch
 from transformers import (
     AutoTokenizer,
-    AutoModelForCausalLM,
+    AutoModelForSeq2SeqLM,
     pipeline,
     BitsAndBytesConfig
 )
@@ -153,7 +153,7 @@ class LlamaSummarizer:
             if quantization_config:
                 model_kwargs["quantization_config"] = quantization_config
 
-            self.model = AutoModelForCausalLM.from_pretrained(
+            self.model = AutoModelForSeq2SeqLM.from_pretrained(
                 self.model_name,
                 **model_kwargs
             )
@@ -164,7 +164,7 @@ class LlamaSummarizer:
             # Crea pipeline di summarization
             logger.info("Creating summarization pipeline...")
             self.summarizer_pipeline = pipeline(
-                "text-generation",
+                "summarization",
                 model=self.model,
                 tokenizer=self.tokenizer,
                 device_map=self.device_map,
@@ -271,21 +271,18 @@ Summary:<|eot_id|>
             # Crea prompt
             prompt = self._create_summary_prompt(text, max_length)
 
-            # Genera summary
+            # Genera summary (using T5 summarization parameters)
             outputs = self.summarizer_pipeline(
-                prompt,
-                max_new_tokens=max_length * 2,  # Token count buffer
-                min_new_tokens=min_length,
+                text,  # Use original text, not prompt for summarization pipeline
+                max_length=max_length,
+                min_length=min_length,
+                do_sample=do_sample,
                 temperature=temperature,
                 top_p=top_p,
-                do_sample=do_sample,
-                pad_token_id=self.tokenizer.eos_token_id,
-                eos_token_id=self.tokenizer.eos_token_id,
-                return_full_text=False,
             )
 
             # Estrai summary
-            summary = outputs[0]["generated_text"].strip()
+            summary = outputs[0]["summary_text"].strip()
 
             # Clean up summary (rimuovi eventuali tag residui)
             summary = summary.replace("<|eot_id|>", "").strip()

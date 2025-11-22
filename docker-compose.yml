@@ -137,8 +137,8 @@ services:
       - ENVIRONMENT=production
       - REDIS_HOST=redis
       - REDIS_PORT=6379
-      - MODEL_NAME=llama-3.2-8b
-      - DEVICE=cuda
+      - MODEL_NAME=google/flan-t5-base
+      - DEVICE=cpu
       - HF_TOKEN=${HF_TOKEN}
     volumes:
       - ./models:/app/models

@@ -18,6 +18,7 @@ Date: 2025-11-21
 
 import logging
 import json
+import os
 import time
 import hashlib
 from typing import Dict, List, Optional, Any
@@ -42,8 +43,8 @@ class SummaryServiceConfig:
     """Configuration for Summary Service."""
 
     # Redis configuration
-    REDIS_HOST: str = "localhost"
-    REDIS_PORT: int = 6379
+    REDIS_HOST: str = os.getenv("REDIS_HOST", "localhost")
+    REDIS_PORT: int = int(os.getenv("REDIS_PORT", "6379"))
     REDIS_DB: int = 0
     REDIS_STREAM_KEY: str = "summary:output"
     REDIS_CACHE_PREFIX: str = "summary:cache:"
@@ -633,8 +634,14 @@ def main():
     logger.info("Summary Service - Testing")
     logger.info("="*70)
 
+    # Check DEVICE environment variable
+    device = os.getenv("DEVICE", "cuda").lower()
+    use_gpu = device == "cuda"
+    logger.info(f"DEVICE environment variable: {device}")
+    logger.info(f"GPU mode: {use_gpu}")
+
     # Initialize service
-    service = SummaryService()
+    service = SummaryService(use_gpu=use_gpu)
 
     # Print service info
     logger.info(f"\nService: {service}")

@@ -6,6 +6,7 @@ using KeyBERT with sentence-transformers embeddings.
 """
 
 import logging
+import os
 from typing import List, Tuple, Optional
 from pathlib import Path
 
@@ -54,18 +55,21 @@ class KeywordExtractor:
         """
         self.model_name = model_name or self.DEFAULT_MODEL
         self.cache_dir = cache_dir
+        self.device = os.getenv("DEVICE", "cuda")
 
         logger.info(f"Initializing KeywordExtractor with model: {self.model_name}")
+        logger.info(f"Using device: {self.device}")
 
         try:
             # Download and load sentence-transformer model
             if cache_dir:
                 sentence_model = SentenceTransformer(
                     self.model_name,
-                    cache_folder=cache_dir
+                    cache_folder=cache_dir,
+                    device=self.device
                 )
             else:
-                sentence_model = SentenceTransformer(self.model_name)
+                sentence_model = SentenceTransformer(self.model_name, device=self.device)
 
             # Initialize KeyBERT with the sentence-transformer
             self.model = KeyBERT(model=sentence_model)
