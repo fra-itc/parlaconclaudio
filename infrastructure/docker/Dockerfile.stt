@@ -96,11 +96,12 @@ COPY --from=builder /app/src/core/stt_engine/*_pb2*.py /app/src/core/stt_engine/
 RUN mkdir -p /app/models /app/logs && \
     chmod 755 /app/models /app/logs
 
-# Set Python environment variables
+# Set Python environment variables and library paths for cuDNN
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
     PYTHONPATH=/app \
-    CUDA_VISIBLE_DEVICES=0
+    CUDA_VISIBLE_DEVICES=0 \
+    LD_LIBRARY_PATH=/usr/local/lib/python3.11/dist-packages/nvidia/cudnn/lib:$LD_LIBRARY_PATH
 
 # Expose gRPC port
 EXPOSE 50051

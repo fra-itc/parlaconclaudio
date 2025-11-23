@@ -12,6 +12,9 @@ from concurrent import futures
 from typing import Optional
 import grpc
 import numpy as np
+from grpc_health.v1 import health
+from grpc_health.v1 import health_pb2
+from grpc_health.v1 import health_pb2_grpc
 
 from . import stt_service_pb2
 from . import stt_service_pb2_grpc
@@ -354,7 +357,7 @@ def serve(
         ]
     )
 
-    # Add servicer
+    # Add STT servicer
     stt_service_pb2_grpc.add_STTServiceServicer_to_server(
         STTEngineServicer(
             model_name=model_name,
@@ -365,12 +368,21 @@ def serve(
         server
     )
 
+    # Add standard gRPC health checking service
+    health_servicer = health.HealthServicer()
+    health_pb2_grpc.add_HealthServicer_to_server(health_servicer, server)
+
+    # Set service as SERVING
+    health_servicer.set("", health_pb2.HealthCheckResponse.SERVING)
+    health_servicer.set("stt.STTService", health_pb2.HealthCheckResponse.SERVING)
+
     # Bind port and start
     server.add_insecure_port(f'[::]:{port}')
     server.start()
 
     logger.info(f"gRPC server started successfully on port {port}")
     logger.info(f"Model: {model_name}, Device: {device}, Compute: {compute_type}")
+    logger.info("Standard gRPC health check enabled")
     logger.info("Server is ready to accept requests...")
 
     try:

@@ -17,6 +17,7 @@ aioredis==2.0.1
 # gRPC communication
 grpcio==1.59.0
 grpcio-tools==1.59.0
+grpcio-health-checking==1.59.0
 protobuf==4.25.0
 
 # Core scientific computing

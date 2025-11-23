@@ -222,6 +222,22 @@ services:
       - prometheus
       - redis-exporter
 
+  # Dockge - Modern Docker Compose Manager
+  dockge:
+    image: louislam/dockge:1
+    container_name: rtstt-dockge
+    restart: unless-stopped
+    ports:
+      - "5001:5001"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - dockge_data:/app/data
+      - /home/frisco/projects/RTSTT:/opt/stacks/rtstt:ro
+    environment:
+      - DOCKGE_STACKS_DIR=/opt/stacks
+    networks:
+      - rtstt_network
+
   # Redis Commander (optional - development only)
   redis-commander:
     image: rediscommander/redis-commander:latest
@@ -253,4 +269,6 @@ volumes:
   grafana_data:
     driver: local
   sessions:
+    driver: local
+  dockge_data:
     driver: local

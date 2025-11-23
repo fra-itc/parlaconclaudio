@@ -18,6 +18,7 @@ Date: 2025-11-21
 
 import logging
 import json
+import os
 import time
 from typing import Dict, List, Optional, Any
 from pathlib import Path
@@ -42,8 +43,8 @@ class NLPServiceConfig:
     """Configuration for NLP Service."""
 
     # Redis configuration
-    REDIS_HOST: str = "localhost"
-    REDIS_PORT: int = 6379
+    REDIS_HOST: str = os.getenv("REDIS_HOST", "localhost")
+    REDIS_PORT: int = int(os.getenv("REDIS_PORT", "6379"))
     REDIS_DB: int = 0
     REDIS_STREAM_KEY: str = "nlp:insights"
     REDIS_MAX_STREAM_LEN: int = 10000

@@ -41,12 +41,16 @@ RUN pip install --no-cache-dir --upgrade pip setuptools wheel && \
 # Stage 2: Runtime - Production image with CUDA 12.8 support (RTX 5080 Blackwell sm_120)
 FROM nvidia/cuda:12.8.0-runtime-ubuntu22.04
 
-# Install Python 3.11
+# Install Python 3.11 and build tools (required for bitsandbytes)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     python3.11 \
     python3.11-venv \
+    python3.11-dev \
     python3-pip \
     curl \
+    gcc \
+    g++ \
+    make \
     && rm -rf /var/lib/apt/lists/*
 
 # Set Python 3.11 as default
@@ -87,7 +91,5 @@ RUN curl -L https://github.com/grpc-ecosystem/grpc-health-probe/releases/downloa
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
     CMD grpc_health_probe -addr=:50053 || exit 1
 
-# Run the Summary gRPC server
-# Note: This assumes you have a gRPC server script for Summary
-# Adjust the command based on your actual implementation
-CMD ["python", "-m", "src.core.summary_generator.summary_service"]
+# Run the Summary Service in server mode (not test mode)
+CMD ["python", "-m", "src.core.summary_generator.server"]

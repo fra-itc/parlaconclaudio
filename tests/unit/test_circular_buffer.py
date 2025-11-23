@@ -220,3 +220,212 @@ def test_circular_buffer_stress_test():
 
     # Check no errors occurred
     assert len(errors) == 0
+
+
+class TestCircularBufferOverflow:
+    """Test buffer overflow handling scenarios."""
+
+    def test_buffer_overflow_oldest_discarded(self):
+        """Test that oldest data is discarded on overflow."""
+        buffer = CircularBuffer(capacity_seconds=0.01, sample_rate=16000, channels=1)
+        capacity = buffer.capacity
+
+        # Write known sequence that fills buffer
+        data1 = np.ones((capacity, 1), dtype=np.float32)
+        buffer.write(data1)
+
+        # Write more data to cause overflow
+        data2 = np.ones((100, 1), dtype=np.float32) * 2
+        buffer.write(data2)
+
+        # Buffer should contain only capacity samples
+        assert buffer.available() == capacity
+
+        # Read all data - should contain data2 (newer data)
+        read_data = buffer.read(capacity)
+        assert read_data is not None
+
+        # Check that we have newer data (2s) at the end
+        assert np.any(read_data[-50:] == 2.0)
+
+    def test_buffer_overflow_continuous_write(self):
+        """Test continuous writing beyond buffer capacity."""
+        buffer = CircularBuffer(capacity_seconds=0.1, sample_rate=16000, channels=1)
+        capacity = buffer.capacity
+
+        # Write 3x capacity in small chunks
+        total_to_write = capacity * 3
+        chunk_size = 100
+
+        for i in range(0, total_to_write, chunk_size):
+            data = np.random.randn(chunk_size, 1).astype(np.float32)
+            buffer.write(data)
+
+        # Buffer should not exceed capacity
+        assert buffer.available() <= capacity
+
+    def test_buffer_overflow_large_chunk(self):
+        """Test writing a single chunk larger than buffer capacity."""
+        buffer = CircularBuffer(capacity_seconds=0.01, sample_rate=16000, channels=1)
+        capacity = buffer.capacity
+
+        # Write more than capacity in single write
+        large_data = np.random.randn(capacity * 2, 1).astype(np.float32)
+        written = buffer.write(large_data)
+
+        # Should write only capacity samples
+        assert buffer.available() <= capacity
+
+
+class TestCircularBufferUnderflow:
+    """Test buffer underflow scenarios."""
+
+    def test_buffer_underflow_returns_none(self):
+        """Test that reading more than available returns None."""
+        buffer = CircularBuffer(capacity_seconds=1.0, sample_rate=16000, channels=1)
+
+        # Write 50 samples
+        data = np.random.randn(50, 1).astype(np.float32)
+        buffer.write(data)
+
+        # Try to read 100 samples (underflow)
+        result = buffer.read(100)
+        assert result is None
+
+        # Original data should still be available
+        assert buffer.available() == 50
+
+    def test_buffer_underflow_empty_read(self):
+        """Test reading from empty buffer."""
+        buffer = CircularBuffer(capacity_seconds=1.0, sample_rate=16000, channels=1)
+
+        # Try to read from empty buffer
+        result = buffer.read(10)
+        assert result is None
+        assert buffer.available() == 0
+
+    def test_buffer_underflow_exact_amount(self):
+        """Test reading exactly the amount available."""
+        buffer = CircularBuffer(capacity_seconds=1.0, sample_rate=16000, channels=1)
+
+        # Write 100 samples
+        data = np.random.randn(100, 1).astype(np.float32)
+        buffer.write(data)
+
+        # Read exactly 100 samples (should succeed)
+        result = buffer.read(100)
+        assert result is not None
+        assert len(result) == 100
+        assert buffer.available() == 0
+
+
+class TestCircularBufferDataLoss:
+    """Test that no audio data is lost during normal operation."""
+
+    def test_no_data_loss_sequential(self):
+        """Test no data loss with sequential write/read operations."""
+        buffer = CircularBuffer(capacity_seconds=1.0, sample_rate=16000, channels=1)
+
+        # Write sequential numbers
+        written_data = []
+        for i in range(10):
+            data = np.arange(i * 100, (i + 1) * 100, dtype=np.float32).reshape(100, 1)
+            buffer.write(data)
+            written_data.append(data)
+
+        # Read all data back
+        total_available = buffer.available()
+        read_data = buffer.read(total_available)
+
+        # Verify all data is present
+        assert read_data is not None
+        assert len(read_data) == 1000  # 10 chunks * 100 samples
+
+        # Verify data integrity
+        expected_data = np.concatenate(written_data)
+        np.testing.assert_array_equal(read_data, expected_data)
+
+    def test_no_data_loss_with_partial_reads(self):
+        """Test no data loss when reading in smaller chunks."""
+        buffer = CircularBuffer(capacity_seconds=1.0, sample_rate=16000, channels=1)
+
+        # Write 1000 samples
+        original_data = np.arange(1000, dtype=np.float32).reshape(1000, 1)
+        buffer.write(original_data)
+
+        # Read in chunks of 100
+        read_chunks = []
+        for i in range(10):
+            chunk = buffer.read(100)
+            assert chunk is not None
+            read_chunks.append(chunk)
+
+        # Concatenate and verify
+        read_data = np.concatenate(read_chunks)
+        np.testing.assert_array_equal(read_data, original_data)
+        assert buffer.available() == 0
+
+    def test_no_data_loss_concurrent_operations(self):
+        """Test no data loss with concurrent read/write."""
+        buffer = CircularBuffer(capacity_seconds=1.0, sample_rate=16000, channels=1)
+
+        written_samples = []
+        read_samples = []
+        lock = threading.Lock()
+
+        def writer():
+            for i in range(10):
+                data = np.ones((100, 1), dtype=np.float32) * i
+                buffer.write(data)
+                with lock:
+                    written_samples.append(data)
+                time.sleep(0.01)
+
+        def reader():
+            for i in range(10):
+                while buffer.available() < 100:
+                    time.sleep(0.001)
+                data = buffer.read(100)
+                if data is not None:
+                    with lock:
+                        read_samples.append(data)
+
+        t1 = threading.Thread(target=writer)
+        t2 = threading.Thread(target=reader)
+
+        t1.start()
+        t2.start()
+        t1.join()
+        t2.join()
+
+        # Verify same amount written and read
+        total_written = sum(len(d) for d in written_samples)
+        total_read = sum(len(d) for d in read_samples)
+        assert total_written == total_read == 1000
+
+    def test_data_preservation_across_wraparound(self):
+        """Test that data is preserved correctly across buffer wraparound."""
+        buffer = CircularBuffer(capacity_seconds=0.01, sample_rate=16000, channels=1)
+        capacity = buffer.capacity
+
+        # Write unique values
+        data1 = np.arange(capacity, dtype=np.float32).reshape(capacity, 1)
+        buffer.write(data1)
+
+        # Read half
+        half = capacity // 2
+        read1 = buffer.read(half)
+        assert read1 is not None
+        np.testing.assert_array_equal(read1, data1[:half])
+
+        # Write more (will wrap around)
+        data2 = np.arange(capacity, capacity * 2, dtype=np.float32).reshape(capacity, 1)
+        buffer.write(data2)
+
+        # Read remaining data
+        read2 = buffer.read(capacity + half)
+        assert read2 is not None
+
+        # Verify data integrity
+        expected = np.concatenate([data1[half:], data2[:capacity]])
+        np.testing.assert_array_equal(read2, expected)

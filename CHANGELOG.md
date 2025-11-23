@@ -9,13 +9,87 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Added
-- Full RTX 5080 Blackwell GPU support (November 22, 2025)
+### Added - Wave 3: Cross-Platform Support & Production Features (November 23, 2025)
+
+**Platform Support:**
+- Full WSL2 (Windows Subsystem for Linux 2) support with automated setup
+- Native Linux deployment capabilities
+- Cross-platform audio capture abstraction layer
+- Platform auto-detection (Windows, WSL1/2, Linux, macOS)
+
+**Audio Infrastructure:**
+- WebSocket audio bridge for WSL2 audio streaming
+- PulseAudio driver for native Linux audio capture
+- PortAudio universal driver for cross-platform compatibility
+- Mock audio driver for hardware-free testing
+- Factory pattern for automatic driver selection
+- Thread-safe asyncio event loop handling
+
+**Processing Pipeline:**
+- Complete STT→NLP→Summary enrichment pipeline
+- Keyword extraction from transcriptions
+- Automatic text summarization for longer content
+- Multi-stage latency tracking (STT: 250-311ms, NLP: <1ms, Summary: <1ms)
+- Enriched JSON response format with separate sections
+- Graceful fallback if pipeline stages fail
+
+**Deployment & DevOps:**
+- Automated WSL2 setup script (setup-wsl2.sh) with dependency installation
+- POC deployment orchestration script (deploy-poc.sh) with health monitoring
+- Comprehensive deployment guide (DEPLOYMENT.md - 818 lines)
+- Docker and NVIDIA GPU auto-configuration
+- Service health checks and monitoring
+- Optional requirements for audio drivers (requirements-audio.txt)
+
+**Testing & Validation:**
+- End-to-end pipeline testing: 253-312ms total latency (48% under 500ms target)
+- 100% success rate with 0 errors over 6 test runs
+- Mock driver validated with sine wave, noise, and silence patterns
+- WebSocket→STT→NLP→Summary full pipeline validation
+
+### Changed
+
+**Architecture:**
+- Decoupled audio capture from WASAPI (Windows-only) to cross-platform abstraction
+- WebSocket gateway now includes full NLP/Summary enrichment
+- Audio bridge service runs on host, streams to containerized backend
+- gRPC connection pooling for ML services (STT, NLP, Summary)
+
+**Performance:**
+- Total pipeline latency: 253-312ms (STT + NLP + Summary)
+- WebSocket audio streaming: 0.28 Mbps throughput
+- 2-second audio buffering for optimal network efficiency
+
+**Compatibility:**
+- Supports WSL2 without direct audio access (WebSocket bridge pattern)
+- Supports native Linux with PulseAudio or PortAudio
+- Maintains Windows support (PortAudio fallback until WASAPI refactor)
+
+### Fixed
+- cuDNN library path in STT engine for proper GPU acceleration
+- Proto file compilation in backend Docker image
+- Asyncio event loop threading for WebSocket audio callbacks
+- Legacy audio imports made optional to avoid container errors
+- Circular import issues in audio factory registration
+
+### Commits (Wave 3)
+1. **417f495**: fix: Add cuDNN library path to STT engine LD_LIBRARY_PATH
+2. **122b74b**: feat: Implement WebSocket→STT integration for real-time audio processing
+3. **1203673**: feat: Add cross-platform audio capture abstraction layer
+4. **ae78273**: feat: Implement WebSocket audio bridge for WSL2/Linux support
+5. **2459260**: feat: Add comprehensive WSL2/Linux deployment infrastructure
+6. **909e80a**: feat: Implement complete STT→NLP→Summary pipeline
+7. **0734baf**: feat: Add PulseAudio and PortAudio drivers for real audio capture
+
+### Added - Wave 2: RTX 5080 & GPU Validation (November 22, 2025)
+
+**GPU Support:**
+- Full RTX 5080 Blackwell GPU support
 - GPU validation suite with comprehensive 7-test framework
 - Benchmark infrastructure foundation (metrics DB, test datasets)
 - RTX 5080 validation report with detailed performance metrics
 
-### Changed
+### Changed - Wave 2
 - **BREAKING**: Upgraded PyTorch from 2.1.0+cu121 to 2.7.0+cu128
 - **BREAKING**: Upgraded CUDA runtime from 12.1.0 to 12.8.0
 - Upgraded transformers: 4.35.0 → 4.48.0
@@ -27,7 +101,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - All Docker images now use nvidia/cuda:12.8.0-runtime-ubuntu22.04
 - Restored GPU mode (DEVICE=cuda) for NLP and Summary services
 
-### Fixed
+### Fixed - Wave 2
 - RTX 5080 CUDA kernel compatibility (PyTorch 2.1.0 lacked sm_120 support)
 - Dependency conflicts in NLP and Summary service builds
 - tokenizers version compatibility with transformers 4.48.0

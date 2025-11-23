@@ -1,0 +1,12 @@
+# Optional audio driver dependencies
+# Install with: pip install -r requirements-audio.txt
+
+# PulseAudio driver (Linux)
+# Requires: sudo apt-get install portaudio19-dev python3-pyaudio
+PyAudio>=0.2.13
+
+# Future: WASAPI driver (Windows)
+# comtypes>=1.2.0  # For Windows COM interfaces
+
+# Future: ALSA driver (Linux alternative)
+# pyalsaaudio>=0.9.0

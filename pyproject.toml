@@ -23,6 +23,7 @@ redis = {extras = ["hiredis"], version = "^5.0.1"}
 # gRPC
 grpcio = "^1.59.0"
 grpcio-tools = "^1.59.0"
+grpcio-health-checking = "^1.59.0"
 protobuf = "^4.25.0"
 
 # Audio processing (base)
@@ -176,6 +177,14 @@ markers = [
     "slow: marks tests as slow (deselect with '-m \"not slow\"')",
     "integration: marks tests as integration tests",
     "unit: marks tests as unit tests",
+    "audio: marks tests as audio-related tests",
+    "vad: marks tests for Voice Activity Detection",
+    "websocket: marks tests for WebSocket functionality",
+    "performance: marks tests for performance benchmarking",
+    "latency: marks tests for latency measurement",
+    "throughput: marks tests for throughput measurement",
+    "e2e: marks tests for end-to-end pipeline validation",
+    "manual: marks tests that require manual execution or interaction",
 ]
 
 [tool.mypy]

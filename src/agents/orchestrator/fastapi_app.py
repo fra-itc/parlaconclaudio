@@ -15,6 +15,13 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 
 from .websocket_gateway import websocket_manager, MessageType
+from src.shared.protocols.grpc_pool import (
+    ServiceType,
+    ServiceConfig,
+    initialize_grpc_pools,
+    close_grpc_pools,
+    get_pool_manager,
+)
 
 
 # Configure logging
@@ -66,11 +73,54 @@ async def lifespan(app: FastAPI):
     logger.info(f"Starting {APP_NAME} v{APP_VERSION}")
     logger.info("WebSocket gateway initialized")
 
+    # Initialize gRPC connection pools
+    logger.info("Initializing gRPC connection pools...")
+    service_configs = {
+        ServiceType.STT: ServiceConfig(
+            host="stt-engine",
+            port=50051,
+            pool_size=3,
+            max_retries=3,
+            timeout=30.0
+        ),
+        ServiceType.NLP: ServiceConfig(
+            host="nlp-service",
+            port=50052,
+            pool_size=2,
+            max_retries=3,
+            timeout=30.0
+        ),
+        ServiceType.SUMMARY: ServiceConfig(
+            host="summary-service",
+            port=50053,
+            pool_size=2,
+            max_retries=3,
+            timeout=30.0
+        ),
+    }
+
+    try:
+        await initialize_grpc_pools(service_configs)
+        logger.info("gRPC connection pools initialized successfully")
+
+        # Store pool manager in app state for access from endpoints
+        app.state.pool_manager = get_pool_manager()
+    except Exception as e:
+        logger.error(f"Failed to initialize gRPC pools: {e}")
+        raise
+
     yield
 
     # Shutdown
     logger.info("Shutting down application...")
+
+    # Close gRPC pools
+    logger.info("Closing gRPC connection pools...")
+    await close_grpc_pools()
+
+    # Close WebSocket connections
     await websocket_manager.cleanup()
+
     logger.info("Application shutdown complete")
 
 

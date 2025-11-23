@@ -1,67 +1,100 @@
 """
-Audio Capture Module for ORCHIDEA RTSTT
+Audio Capture Module for RTSTT
 
-This module provides WASAPI-based audio capture for Windows 11,
-with device enumeration and audio format conversion utilities.
+Cross-platform audio capture with driver abstraction layer.
 
-Author: ORCHIDEA Agent System
-Created: 2025-11-21
+Supports:
+- Windows (WASAPI)
+- Linux (PulseAudio, ALSA)
+- WSL2 (WebSocket bridge)
+- Mock driver for testing
 """
 
-from .circular_buffer import CircularBuffer
-from .wasapi_capture import WASAPICapture
-from .wasapi_devices import (
-    AudioDevice,
-    list_audio_devices,
-    get_default_device,
-    get_device_by_id,
-    get_device_by_name
+# Core abstraction layer (always available)
+from .audio_capture_base import (
+    AudioCaptureBase,
+    AudioCaptureConfig,
+    AudioCaptureState,
+    AudioDevice as BaseAudioDevice,
+    AudioFormat,
+    AudioCaptureMetrics
 )
-from .audio_format import (
-    convert_sample_rate,
-    convert_to_mono,
-    convert_to_stereo,
-    normalize_audio,
-    convert_int16_to_float32,
-    convert_float32_to_int16,
-    apply_gain,
-    get_audio_stats
+from .platform_detector import (
+    PlatformDetector,
+    PlatformType,
+    AudioSubsystem,
+    PlatformInfo,
+    detect_platform,
+    is_wsl,
+    get_recommended_driver
 )
-from .vad_silero import SileroVAD
-from .vad_segmenter import VADSegmenter
-from .audio_service import AudioService, AudioServiceState
+from .audio_factory import (
+    AudioCaptureFactory,
+    create_audio_capture
+)
+
+# Optional: Original WASAPI components (only if dependencies available)
+try:
+    from .circular_buffer import CircularBuffer
+    from .audio_format import (
+        convert_sample_rate,
+        convert_to_mono,
+        convert_to_stereo,
+        normalize_audio,
+        convert_int16_to_float32,
+        convert_float32_to_int16,
+        apply_gain,
+        get_audio_stats
+    )
+    from .vad_silero import SileroVAD
+    from .vad_segmenter import VADSegmenter
+    _legacy_available = True
+except ImportError:
+    _legacy_available = False
+
+# Optional: AudioService (requires VAD)
+try:
+    from .audio_service import AudioService, AudioServiceState
+    _service_available = True
+except ImportError:
+    _service_available = False
 
 __all__ = [
-    # Buffer
-    'CircularBuffer',
-
-    # Capture
-    'WASAPICapture',
-
-    # Devices
-    'AudioDevice',
-    'list_audio_devices',
-    'get_default_device',
-    'get_device_by_id',
-    'get_device_by_name',
-
-    # Format conversion
-    'convert_sample_rate',
-    'convert_to_mono',
-    'convert_to_stereo',
-    'normalize_audio',
-    'convert_int16_to_float32',
-    'convert_float32_to_int16',
-    'apply_gain',
-    'get_audio_stats',
-
-    # VAD and Segmentation
-    'SileroVAD',
-    'VADSegmenter',
-
-    # Integrated Service
-    'AudioService',
-    'AudioServiceState',
+    # Core abstraction layer (always available)
+    'AudioCaptureBase',
+    'AudioCaptureConfig',
+    'AudioCaptureState',
+    'BaseAudioDevice',
+    'AudioFormat',
+    'AudioCaptureMetrics',
+    'PlatformDetector',
+    'PlatformType',
+    'AudioSubsystem',
+    'PlatformInfo',
+    'detect_platform',
+    'is_wsl',
+    'get_recommended_driver',
+    'AudioCaptureFactory',
+    'create_audio_capture',
 ]
 
-__version__ = '0.1.0'
+# Add legacy components if available
+if _legacy_available:
+    __all__.extend([
+        'CircularBuffer',
+        'convert_sample_rate',
+        'convert_to_mono',
+        'convert_to_stereo',
+        'normalize_audio',
+        'convert_int16_to_float32',
+        'convert_float32_to_int16',
+        'apply_gain',
+        'get_audio_stats',
+        'SileroVAD',
+        'VADSegmenter',
+    ])
+
+if _service_available:
+    __all__.extend(['AudioService', 'AudioServiceState'])
+
+__version__ = '0.2.0'
