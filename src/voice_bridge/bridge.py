@@ -1,0 +1,193 @@
+"""
+Voice Bridge - Main entry point and state machine.
+
+Push-to-talk flow:
+    IDLE --(hotkey press)--> RECORDING --(hotkey release)--> TRANSCRIBING --> OUTPUT --> IDLE
+
+Usage:
+    cd C:\\PROJECTS\\RTSTT && .\\venv\\Scripts\\activate
+    python -m src.voice_bridge.bridge
+"""
+
+import logging
+import signal
+import sys
+import threading
+import time
+from enum import Enum
+
+from .config import VoiceBridgeConfig
+from .sounds import beep_start, beep_stop, beep_output
+from .audio_recorder import AudioRecorder
+from .transcriber import Transcriber
+from .output_handler import OutputHandler
+from .hotkey_listener import HotkeyListener
+from .tray_icon import TrayIcon
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(name)s] %(levelname)s: %(message)s",
+    datefmt="%H:%M:%S",
+)
+logger = logging.getLogger("voice_bridge")
+
+
+class BridgeState(Enum):
+    IDLE = "idle"
+    RECORDING = "recording"
+    TRANSCRIBING = "transcribing"
+    OUTPUT = "output"
+
+
+class VoiceBridge:
+    """Main voice bridge controller with push-to-talk state machine."""
+
+    def __init__(self, config: VoiceBridgeConfig | None = None):
+        self.config = config or VoiceBridgeConfig()
+        self._state = BridgeState.IDLE
+        self._running = False
+        self._lock = threading.Lock()
+
+        # Components (lazy init for heavy ones like Whisper)
+        self._recorder = AudioRecorder(
+            sample_rate=self.config.sample_rate,
+            channels=self.config.channels,
+            chunk_size=self.config.chunk_size,
+        )
+        self._transcriber = Transcriber(
+            model_name=self.config.whisper_model,
+            device=self.config.whisper_device,
+            compute_type=self.config.whisper_compute_type,
+            language=self.config.whisper_language,
+        )
+        self._output = OutputHandler(
+            mode=self.config.output_mode,
+            auto_submit=self.config.auto_submit,
+        )
+        self._hotkey = HotkeyListener(
+            hotkey_str=self.config.hotkey,
+            on_press=self._on_hotkey_press,
+            on_release=self._on_hotkey_release,
+        )
+        self._tray = TrayIcon(on_exit=self.stop)
+
+    @property
+    def state(self) -> BridgeState:
+        return self._state
+
+    def _set_state(self, new_state: BridgeState) -> None:
+        old = self._state
+        self._state = new_state
+        self._tray.set_state(new_state.value)
+        logger.info(f"State: {old.value} -> {new_state.value}")
+
+    def _on_hotkey_press(self) -> None:
+        """Called when push-to-talk hotkey is pressed."""
+        with self._lock:
+            if self._state != BridgeState.IDLE:
+                return
+            self._set_state(BridgeState.RECORDING)
+
+        if self.config.sound_on_start:
+            beep_start(self.config.sound_start_freq, self.config.sound_start_duration)
+
+        self._recorder.start()
+
+    def _on_hotkey_release(self) -> None:
+        """Called when push-to-talk hotkey is released."""
+        with self._lock:
+            if self._state != BridgeState.RECORDING:
+                return
+            self._set_state(BridgeState.TRANSCRIBING)
+
+        if self.config.sound_on_stop:
+            beep_stop(self.config.sound_stop_freq, self.config.sound_stop_duration)
+
+        # Stop recording and get audio
+        audio = self._recorder.stop()
+
+        # Transcribe in background thread to not block hotkey listener
+        threading.Thread(target=self._transcribe_and_output, args=(audio,), daemon=True).start()
+
+    def _transcribe_and_output(self, audio) -> None:
+        """Transcribe audio and deliver output."""
+        try:
+            text = self._transcriber.transcribe(audio)
+
+            if text:
+                with self._lock:
+                    self._set_state(BridgeState.OUTPUT)
+
+                self._output.deliver(text)
+
+                if self.config.sound_on_output:
+                    beep_output(self.config.sound_output_freq, self.config.sound_output_duration)
+            else:
+                logger.info("No speech detected")
+        except Exception as e:
+            logger.error(f"Transcription pipeline error: {e}")
+        finally:
+            with self._lock:
+                self._set_state(BridgeState.IDLE)
+
+    def start(self) -> None:
+        """Start the voice bridge."""
+        self._running = True
+        logger.info("=" * 50)
+        logger.info("Voice Bridge starting...")
+        logger.info(f"  Hotkey: {self.config.hotkey}")
+        logger.info(f"  Mode: {self.config.mode}")
+        logger.info(f"  Model: {self.config.whisper_model} ({self.config.whisper_device})")
+        logger.info(f"  Output: {self.config.output_mode}")
+        logger.info("=" * 50)
+
+        # Pre-load Whisper model at startup
+        logger.info("Pre-loading Whisper model (this may take a moment)...")
+        self._transcriber._ensure_engine()
+        logger.info("Model ready!")
+
+        # Start components
+        self._tray.start()
+        self._hotkey.start()
+        self._set_state(BridgeState.IDLE)
+
+        logger.info("Voice Bridge ready! Hold hotkey to dictate.")
+        logger.info("Press Ctrl+C to exit.")
+
+    def stop(self) -> None:
+        """Stop the voice bridge and clean up."""
+        self._running = False
+        logger.info("Shutting down voice bridge...")
+        self._hotkey.stop()
+        self._recorder.cleanup()
+        self._transcriber.cleanup()
+        self._tray.stop()
+        logger.info("Voice bridge stopped.")
+
+    def run_forever(self) -> None:
+        """Start and block until interrupted."""
+        self.start()
+        try:
+            while self._running:
+                time.sleep(0.5)
+        except KeyboardInterrupt:
+            pass
+        finally:
+            self.stop()
+
+
+def main():
+    config = VoiceBridgeConfig()
+    bridge = VoiceBridge(config)
+
+    # Handle Ctrl+C gracefully
+    def signal_handler(sig, frame):
+        bridge.stop()
+        sys.exit(0)
+
+    signal.signal(signal.SIGINT, signal_handler)
+    bridge.run_forever()
+
+
+if __name__ == "__main__":
+    main()

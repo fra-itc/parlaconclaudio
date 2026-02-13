@@ -2,6 +2,9 @@
 REM Windows Microphone Test Script
 REM Tests real microphone input with the RTSTT system
 
+REM Change to the script's directory (project root)
+cd /d "%~dp0"
+
 echo ======================================================================
 echo   RTSTT Windows Microphone Test
 echo   Real-time Speech Recognition with Live Microphone
@@ -39,7 +42,7 @@ if %errorlevel% neq 0 (
 echo.
 echo [1/3] Checking available microphones...
 echo.
-python -c "from src.core.audio_capture.audio_factory import create_audio_capture; driver = create_audio_capture(driver='portaudio'); devices = driver.list_devices(); print(f'\nFound {len(devices)} microphone(s):'); [print(f'  [{i}] {d.name} {"(DEFAULT)" if d.is_default else ""}') for i, d in enumerate(devices)]"
+python -c "from src.core.audio_capture.audio_factory import create_audio_capture; driver = create_audio_capture(driver='portaudio'); devices = driver.list_devices(); print(f'\nFound {len(devices)} microphone(s):'); [print(f'  [{i}] {d.name} {\"(DEFAULT)\" if d.is_default else \"\"}') for i, d in enumerate(devices)]"
 
 echo.
 echo [2/3] Checking backend status...
