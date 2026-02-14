@@ -128,6 +128,8 @@ EDGE_VOICES = {
     ],
 }
 
+VOLUME_LEVELS = [50, 75, 100, 125, 150, 200, 250, 300]
+
 WHISPER_LANGUAGES = {
     "Auto-detect": None,
     "Italiano": "it",
@@ -158,12 +160,14 @@ def _save_config(config: dict) -> None:
 
 
 def _play_sound(filepath: str) -> None:
-    """Play a sound file for preview."""
+    """Play a sound file for preview at configured volume."""
+    config = _load_config()
+    volume = str(config.get("volume", 200))
     try:
         CREATE_NO_WINDOW = 0x08000000
         subprocess.Popen(
             ["ffplay", "-nodisp", "-autoexit", "-loglevel", "quiet",
-             "-volume", "200", filepath],
+             "-volume", volume, filepath],
             creationflags=CREATE_NO_WINDOW,
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
@@ -476,6 +480,17 @@ class TrayIcon:
                         self._make_set_sound_pack(pack_name),
                     ))
 
+        # --- Volume submenu ---
+        current_vol = config.get("volume", 200)
+        vol_items = []
+        for level in VOLUME_LEVELS:
+            checked = (level == current_vol)
+            pct = f"{level}%"  # ffplay 100 = normal
+            vol_items.append(pystray.MenuItem(
+                f"{'> ' if checked else '  '}{pct}",
+                self._make_set_volume(level),
+            ))
+
         # --- Preview Sounds submenu ---
         preview_items = []
         pack_dir = SOUNDS_DIR / current_pack
@@ -495,6 +510,7 @@ class TrayIcon:
             pystray.MenuItem(f"Alessia [{alessia_display}]", alessia_submenu),
             pystray.MenuItem(f"Claudio [{claudio_display}]", claudio_submenu),
             pystray.Menu.SEPARATOR,
+            pystray.MenuItem(f"Volume [{current_vol}%]", pystray.Menu(*vol_items)),
             pystray.MenuItem("Sound Pack", pystray.Menu(*pack_items)),
             pystray.MenuItem(f"Preview [{current_pack}]", pystray.Menu(*preview_items) if preview_items else None),
             pystray.Menu.SEPARATOR,
@@ -534,6 +550,15 @@ class TrayIcon:
             _save_config(config)
             name = self._voice_display_name(voice_id)
             logger.info(f"{role.capitalize()} voice set to: {name} ({voice_id})")
+            self._rebuild_menu()
+        return handler
+
+    def _make_set_volume(self, level: int):
+        def handler(icon, item):
+            config = _load_config()
+            config["volume"] = level
+            _save_config(config)
+            logger.info(f"Volume set to: {level}%")
             self._rebuild_menu()
         return handler
 
