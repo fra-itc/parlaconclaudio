@@ -10,8 +10,11 @@ class VoiceBridgeConfig:
     # Hotkey (pynput format)
     hotkey: str = "<ctrl>+<alt>+<space>"
 
-    # Mode: push_to_talk (P0) | vad_continuous (P1)
+    # Mode: push_to_talk | vad_continuous (P1)
     mode: str = "push_to_talk"
+
+    # Hotkey mode: toggle (press once start, press again stop) | push_to_talk (hold to record)
+    hotkey_mode: str = "toggle"
 
     # Whisper engine settings
     whisper_model: str = "large-v3"

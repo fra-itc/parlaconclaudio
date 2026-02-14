@@ -68,6 +68,7 @@ class VoiceBridge:
             hotkey_str=self.config.hotkey,
             on_press=self._on_hotkey_press,
             on_release=self._on_hotkey_release,
+            mode=self.config.hotkey_mode,
         )
         self._tray = TrayIcon(on_exit=self.stop)
 
@@ -129,6 +130,7 @@ class VoiceBridge:
         finally:
             with self._lock:
                 self._set_state(BridgeState.IDLE)
+            self._hotkey.reset_toggle()
 
     def start(self) -> None:
         """Start the voice bridge."""

@@ -2,12 +2,18 @@
 Transcriber - Wrapper around WhisperRTXEngine for voice bridge.
 
 Handles lazy model loading and provides a simple transcribe(audio) -> str interface.
+Reads whisper_language from shared tts_config.json so tray menu changes take effect.
 """
 
+import json
 import logging
+from pathlib import Path
+
 import numpy as np
 
 logger = logging.getLogger(__name__)
+
+TTS_CONFIG = Path.home() / ".claude" / "cache" / "tts" / "tts_config.json"
 
 
 class Transcriber:
@@ -42,6 +48,16 @@ class Transcriber:
         )
         logger.info("Whisper model loaded and ready")
 
+    def _get_active_language(self) -> str | None:
+        """Read whisper_language from tts_config.json (tray menu setting)."""
+        try:
+            if TTS_CONFIG.is_file():
+                config = json.loads(TTS_CONFIG.read_text())
+                return config.get("whisper_language", self._language)
+        except Exception:
+            pass
+        return self._language
+
     def transcribe(self, audio: np.ndarray) -> str:
         """
         Transcribe a numpy float32 audio array to text.
@@ -57,16 +73,19 @@ class Transcriber:
 
         self._ensure_engine()
 
+        # Read language from shared config (tray menu can change it)
+        language = self._get_active_language()
+
         try:
             result = self._engine.transcribe(
                 audio,
-                language=self._language,
+                language=language,
                 beam_size=5,
                 vad_filter=True,
                 word_timestamps=False,
             )
             text = result.text.strip()
-            logger.info(f"Transcription: '{text}' (lang={result.language})")
+            logger.info(f"Transcription: '{text}' (lang={result.language}, requested={language or 'auto'})")
             return text
         except Exception as e:
             logger.error(f"Transcription failed: {e}")
