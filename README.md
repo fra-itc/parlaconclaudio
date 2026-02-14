@@ -1,626 +1,457 @@
-# Real-Time Speech-to-Text Orchestrator
+<p align="center">
+  <h1 align="center">parlaconclaudio</h1>
+  <p align="center"><strong>Talk to Claude with your voice. Dictate, listen, control.</strong></p>
+</p>
 
-![Version](https://img.shields.io/badge/version-1.0.0--POC-blue)
-![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20WSL2%20%7C%20Linux-0078D4)
-![Python](https://img.shields.io/badge/python-3.10%2B-3776AB)
-![License](https://img.shields.io/badge/license-MIT-green)
-
-**Cross-platform, multi-agent orchestrated real-time speech-to-text system with NLP insights and automatic summarization, powered by ORCHIDEA Framework v1.3.**
-
----
-
-## 🎯 Overview
-
-This Proof of Concept (POC) demonstrates a production-grade real-time STT system with **full cross-platform support** featuring:
-
-- **Audio Capture**: Cross-platform drivers (PulseAudio, PortAudio, WASAPI) with WebSocket bridge for WSL2
-- **STT Engine**: Whisper Large V3 optimized for RTX 5080 GPU with TensorRT
-- **NLP Pipeline**: Complete STT→NLP→Summary enrichment pipeline (250-312ms total latency)
-- **NLP Insights**: Keyword extraction, speaker diarization, semantic analysis
-- **Summarization**: Automatic text summarization for longer transcriptions
-- **Frontend**: Electron desktop app with React dashboard
-- **Orchestration**: ORCHIDEA v1.3 framework with multi-agent coordination
-
-### Key Performance Targets & Achievements
-
-- ✅ **Pipeline latency**: **253-312ms** (STT: 250-311ms, NLP: <1ms, Summary: <1ms)
-- ✅ **Platform support**: Windows, WSL2, Linux (native), macOS (via PortAudio)
-- Word Error Rate: **<5%**
-- GPU memory: **<14GB**
-- CPU usage (audio): **<5%**
-- Test coverage: **>95%**
-
-### Platform Support
-
-| Platform | Audio Driver | Status | Notes |
-|----------|--------------|--------|-------|
-| **Windows 11** | PortAudio / WASAPI* | ✅ | *WASAPI refactor pending |
-| **WSL2** | WebSocket Bridge | ✅ | Automated setup available |
-| **Linux Native** | PulseAudio / PortAudio | ✅ | Tested on Ubuntu 22.04+ |
-| **macOS** | PortAudio (CoreAudio) | ⚠️ | Untested, should work |
+<p align="center">
+  <img src="https://img.shields.io/badge/platform-Windows%2011-0078D4?style=flat-square&logo=windows" alt="Windows 11">
+  <img src="https://img.shields.io/badge/python-3.11+-3776AB?style=flat-square&logo=python&logoColor=white" alt="Python 3.11+">
+  <img src="https://img.shields.io/badge/GPU-NVIDIA%20CUDA-76B900?style=flat-square&logo=nvidia" alt="NVIDIA CUDA">
+  <img src="https://img.shields.io/badge/STT-Whisper%20large--v3-FF6F00?style=flat-square" alt="Whisper large-v3">
+  <img src="https://img.shields.io/badge/TTS-edge--tts-00A4EF?style=flat-square&logo=microsoft" alt="edge-tts">
+  <img src="https://img.shields.io/badge/built%20with-Claude%20Code-7C3AED?style=flat-square" alt="Built with Claude Code">
+  <img src="https://img.shields.io/badge/license-MIT-green?style=flat-square" alt="MIT License">
+</p>
 
 ---
 
-## 🏗️ Architecture
-
-```
-┌─────────────────┐
-│  Electron App   │ (Frontend)
-│  React + WS     │
-└────────┬────────┘
-         │ WebSocket
-         ↓
-┌─────────────────┐     Redis Streams      ┌──────────────┐
-│  FastAPI Backend│◄──────────────────────►│  Redis Queue │
-│  (Gateway)      │                         └──────────────┘
-└────────┬────────┘
-         │ gRPC
-         ├─────────────────┬─────────────────┬──────────────┐
-         ↓                 ↓                 ↓              ↓
-  ┌─────────────┐   ┌────────────┐   ┌────────────┐  ┌────────────┐
-  │ Audio       │   │ STT Engine │   │ NLP Service│  │  Summary   │
-  │ Capture     │   │ Whisper V3 │   │ Mistral-7B │  │  Llama-3.2 │
-  │ WASAPI      │   │ RTX 5080   │   │            │  │            │
-  └─────────────┘   └────────────┘   └────────────┘  └────────────┘
-```
-
-### ORCHIDEA Multi-Agent Teams
-
-- **Master Orchestrator**: Claude Opus 4.1 (HAS H4)
-- **Audio Team**: 3 agents - Capture, VAD, Buffer
-- **ML Team**: 4 agents - STT, NLP, Summary, Optimization
-- **Frontend Team**: 2 agents - Electron, React
-- **Integration Team**: 2 agents - Backend, Infrastructure
+**[English](#english)** | **[Portugues BR](#portugues-br)** | **[Italiano](#italiano)**
 
 ---
 
-## 🚀 Quick Start
+# English
 
-### Prerequisites
+## What is parlaconclaudio?
 
-**Common Requirements:**
-- **GPU**: NVIDIA RTX 5080 Blackwell (16GB VRAM) - **FULLY VALIDATED ✅** or compatible GPU
-- **CUDA**: 12.8+ (required for RTX 5080 sm_120 support)
-- **PyTorch**: 2.7.0+cu128 (validated on RTX 5080)
-- **Python**: 3.10+
-- **Docker**: 24.0+ with NVIDIA Container Runtime
-- **Redis**: 7.2+
+A voice interaction system for **Claude Code** (Anthropic's AI coding CLI) on Windows. It adds two capabilities that transform the coding experience:
 
-**Platform-Specific:**
-- **Windows**: Node.js 20.x (for Electron UI)
-- **WSL2**: Ubuntu 22.04+ distribution
-- **Linux**: PulseAudio or PortAudio19-dev
+1. **Voice Dictation** - Press `Ctrl+Alt+Space`, speak naturally, and your words are transcribed locally on your GPU and pasted into the active terminal. No cloud, no latency, no privacy concerns.
 
-> **RTX 5080 Validation**: All ML services (STT, NLP, Summary) passed 7/7 GPU validation tests with PyTorch 2.7.0+cu128 and CUDA 12.8. See [RTX_5080_VALIDATION_REPORT.md](RTX_5080_VALIDATION_REPORT.md) for full details.
+2. **Voice Notifications** - Two AI personas (Alessia & Claudio) announce task completions, permission requests, and status changes with natural-sounding voices. You can walk away from the screen and still know what Claude is doing.
 
-### Installation
+3. **Animated Tray Control** - A mystical marble sphere in your system tray shifts colors based on state. Right-click for full settings: voice selection, language, volume, sound packs.
 
-#### Option A: WSL2 (Automated Setup)
+## Demo
 
-```bash
-# Clone repository
-git clone <repository-url>
-cd realtime-stt-orchestrator
+> *Screenshots and demo video coming soon*
 
-# Run automated setup (installs all dependencies)
-./scripts/setup-wsl2.sh
+## Architecture
 
-# Deploy POC
-./scripts/deploy-poc.sh test
+```
+┌─────────────────────────────────────────────────────────┐
+│                    Voice Bridge                          │
+│                                                         │
+│  Ctrl+Alt+Space ──> Microphone ──> Whisper (GPU)        │
+│                                      │                  │
+│                                      ▼                  │
+│                              Transcribed Text            │
+│                                      │                  │
+│                                      ▼                  │
+│                           Clipboard + Ctrl+V             │
+│                           (pasted in terminal)           │
+└─────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────┐
+│                  TTS Notifications                       │
+│                                                         │
+│  Claude Code Hook ──> notify-tts.py                     │
+│                          │                              │
+│                          ├──> Chime (R2-D2/SouthPark)   │
+│                          │                              │
+│                          └──> edge-tts Voice             │
+│                               Alessia (subtasks)        │
+│                               Claudio (main tasks)      │
+└─────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────┐
+│                   Tray Icon                              │
+│                                                         │
+│  Animated marble sphere (PIL + pystray)                 │
+│  🟢 Rainbow shift = Idle                                │
+│  🔴 Red pulse = Recording                               │
+│  🟡 Gold shimmer = Transcribing                         │
+│                                                         │
+│  Right-click menu:                                      │
+│  ├── Whisper Language (Auto/IT/EN/PT/ES/FR/DE/JA)      │
+│  ├── Quick Presets (5 voice combos)                     │
+│  ├── Alessia Voice [by language] (47 voices)            │
+│  ├── Claudio Voice [by language] (47 voices)            │
+│  ├── Volume (50-300%)                                   │
+│  ├── Sound Pack (R2-D2/South Park/American Dad)         │
+│  ├── Preview sounds                                     │
+│  └── Exit                                               │
+└─────────────────────────────────────────────────────────┘
 ```
 
-#### Option B: Native Linux
+## Local STT Specifications
+
+| Spec | Value |
+|------|-------|
+| **Model** | Whisper large-v3 |
+| **Engine** | faster-whisper (CTranslate2 backend) |
+| **GPU** | NVIDIA RTX 5080 (any CUDA GPU works) |
+| **VRAM** | ~3 GB (float16) |
+| **Inference** | ~1 second for 10-15s audio |
+| **VAD** | Silero VAD (removes silence pre-transcription) |
+| **Languages** | Auto-detect + IT, EN, PT, ES, FR, DE, JA |
+| **Privacy** | 100% local - no audio leaves the machine |
+| **Compute type** | float16 (CUDA) |
+| **Beam size** | 5 |
+
+## TTS Specifications
+
+| Spec | Value |
+|------|-------|
+| **Engine** | edge-tts (Microsoft Edge Neural Voices) |
+| **Cost** | Free |
+| **Voices** | 47 across 8 languages |
+| **Caching** | Dynamic MP3 cache by content hash |
+| **Latency** | ~500ms first time, instant from cache |
+| **Personas** | Alessia (subtasks, Italian) + Claudio (main, English) |
+
+## Prerequisites
+
+- Windows 10/11
+- NVIDIA GPU with CUDA support
+- Python 3.11+
+- FFmpeg (`ffplay` in PATH)
+- Claude Code CLI
+
+## Installation
 
 ```bash
-# Clone repository
-git clone <repository-url>
-cd realtime-stt-orchestrator
+# Clone
+git clone https://github.com/fra-itc/parlaconclaudio.git
+cd parlaconclaudio
 
-# Install system dependencies
-sudo apt-get update
-sudo apt-get install -y docker.io docker-compose portaudio19-dev python3-pyaudio
-
-# Setup environment
-cp .env.example .env
-# Edit .env as needed
-
-# Install audio driver dependencies
-pip install -r requirements-audio.txt
-
-# Build and deploy
-docker-compose build
-docker-compose up -d
-
-# Test with real audio
-python -m src.host_audio_bridge.main --driver pulseaudio
-```
-
-#### Option C: Windows 11 (Manual Setup)
-
-```bash
-# 1. Clone Repository
-git clone <repository-url>
-cd realtime-stt-orchestrator
-
-# 2. Setup Python Environment
+# Create virtual environment
 python -m venv venv
-venv\Scripts\activate
+.\venv\Scripts\activate
 
-# Install dependencies
-pip install -r requirements/base.txt
-pip install -r requirements-audio.txt
-pip install -r requirements/ml.txt
-pip install -r requirements/dev.txt
+# Install core dependencies
+pip install faster-whisper pynput pyperclip pyaudio pystray Pillow
+
+# Install CUDA support (cuDNN for CTranslate2)
+pip install nvidia-cudnn-cu12 nvidia-cublas-cu12
+
+# Fix transformers compatibility
+pip install "transformers<4.45"
+
+# Install TTS (system Python or venv)
+pip install edge-tts
 ```
 
-#### 3. Download ML Models
+### Configure Claude Code Hooks
+
+Add to `~/.claude/settings.json`:
+
+```json
+{
+  "hooks": {
+    "Stop": [{
+      "hooks": [{
+        "type": "command",
+        "command": "python C:/Users/YOUR_USER/.claude/scripts/notify-tts.py",
+        "timeout": 10,
+        "async": true
+      }]
+    }],
+    "Notification": [{
+      "hooks": [{
+        "type": "command",
+        "command": "python C:/Users/YOUR_USER/.claude/scripts/notify-tts.py",
+        "timeout": 10,
+        "async": true
+      }]
+    }],
+    "TaskCompleted": [{
+      "hooks": [{
+        "type": "command",
+        "command": "python C:/Users/YOUR_USER/.claude/scripts/notify-tts.py",
+        "timeout": 10,
+        "async": true
+      }]
+    }]
+  }
+}
+```
+
+### Launch
 
 ```bash
-# Whisper Large V3
-python scripts/download_whisper.py
+# Option 1: Batch file
+.\VoiceBridge.bat
 
-# Silero VAD
-python scripts/download_silero_vad.py
-
-# NLP models (Mistral, Sentence-BERT, PyAnnote)
-python scripts/download_nlp_models.py
-
-# Summary model (Llama-3.2)
-python scripts/download_summary_model.py
+# Option 2: Direct
+.\venv\Scripts\python.exe -m src.voice_bridge.bridge
 ```
 
-#### 4. Configure Environment
+## Project Structure
 
-**Option A: Docker Secrets (Recommended for Security)**
+```
+src/voice_bridge/
+  __init__.py            # NVIDIA DLL PATH setup for CUDA imports
+  bridge.py              # State machine: IDLE -> RECORDING -> TRANSCRIBING -> OUTPUT
+  config.py              # VoiceBridgeConfig dataclass
+  hotkey_listener.py     # Global hotkey (toggle + push-to-talk modes)
+  audio_recorder.py      # Microphone capture via PortAudio
+  transcriber.py         # Whisper wrapper, reads config for language
+  output_handler.py      # Clipboard + Win32 SendInput paste
+  sounds.py              # Beep feedback (start/stop/output)
+  tray_icon.py           # Animated marble sphere + full settings menu
 
-```bash
-# Run interactive setup script
-bash scripts/setup-secrets.sh
+src/core/
+  stt_engine/
+    whisper_rtx.py       # WhisperRTXEngine (faster-whisper on CUDA)
+  audio_capture/
+    drivers/
+      portaudio_driver.py  # PortAudio microphone driver
 
-# This will create:
-# - infrastructure/secrets/hf_token.txt (HuggingFace token)
-# - infrastructure/secrets/redis_password.txt (Redis password)
-# - infrastructure/secrets/jwt_secret.txt (JWT signing key)
-# - infrastructure/secrets/grafana_admin_password.txt (Grafana password)
-
-# All files are automatically set to permission 600 (secure)
+scripts/
+  notify-tts.py          # Claude Code hook handler (chime + TTS)
+  tts-warmup.py          # Pre-generate common TTS phrases
 ```
 
-**Option B: Environment Variables (Traditional)**
+## Tools Used During Development
 
-```bash
-# Copy environment template
-copy .env.example .env
-
-# Edit .env with your configuration
-notepad .env
-```
-
-> 💡 **See [SECRETS.md](SECRETS.md)** for comprehensive secrets management guide
-
-#### 5. Start Services with Docker
-
-**If using Docker Secrets (from Option A above):**
-
-```bash
-# Start all services with secrets
-docker-compose -f docker-compose.yml -f docker-compose.secrets.yml up -d
-```
-
-**If using Environment Variables (from Option B above):**
-
-```bash
-# Start Redis + monitoring stack
-docker-compose up -d redis prometheus grafana
-
-# Build and start ML services (requires NVIDIA Docker)
-docker-compose up -d stt-engine nlp-service summary-service
-
-# Start backend
-docker-compose up -d backend
-```
-
-#### 6. Install Electron Frontend
-
-```bash
-cd src/ui/desktop
-npm install
-npm run dev  # Development mode
-# or
-npm run build  # Production build
-```
-
-### Verify Installation
-
-```bash
-# Check services health
-curl http://localhost:8000/health
-
-# List audio devices
-curl http://localhost:8000/api/v1/devices
-
-# Access Grafana dashboard
-# http://localhost:3001 (admin/admin)
-
-# Access Prometheus
-# http://localhost:9090
-```
+| Tool | Purpose |
+|------|---------|
+| **Claude Code** (Anthropic CLI) | AI coding assistant that built this entire project |
+| **Claude Opus 4.6** | The AI model powering all development |
+| **Python 3.11** | Primary language |
+| **faster-whisper** | Local Whisper inference (CTranslate2) |
+| **edge-tts** | Microsoft Neural TTS voices (free) |
+| **pynput** | Global keyboard hooks |
+| **pystray + Pillow** | System tray with animated icon frames |
+| **pyperclip** | Cross-platform clipboard |
+| **PyAudio / PortAudio** | Microphone capture |
+| **ffplay** (FFmpeg) | Audio playback (chimes + TTS) |
+| **Win32 SendInput** (ctypes) | Keyboard simulation for auto-paste |
+| **nvidia-cudnn-cu12** | CUDA Deep Neural Network library |
+| **Git** | Version control on `stage` branch |
 
 ---
 
-## 📖 Usage
+# Portugues BR
 
-### Desktop App
+## O que e parlaconclaudio?
 
-1. Launch the Electron app
-2. Select audio input device (or use system loopback)
-3. Click "Start Recording"
-4. View real-time transcription, keywords, and summary
+Um sistema de interacao por voz para o **Claude Code** (CLI de IA da Anthropic) no Windows. Adiciona duas capacidades que transformam a experiencia de programacao:
 
-### API Usage
+1. **Ditado por Voz** - Pressione `Ctrl+Alt+Space`, fale naturalmente, e suas palavras sao transcritas localmente na sua GPU e coladas no terminal ativo. Sem nuvem, sem latencia, sem preocupacoes com privacidade.
 
-#### Start Transcription (WebSocket)
+2. **Notificacoes por Voz** - Duas personas de IA (Alessia e Claudio) anunciam conclusoes de tarefas, pedidos de permissao e mudancas de status com vozes de som natural. Voce pode se afastar da tela e ainda saber o que o Claude esta fazendo.
 
-```javascript
-const ws = new WebSocket('ws://localhost:8000/ws');
+3. **Controle no Tray Animado** - Uma esfera de marmore mistica no system tray muda de cor conforme o estado. Clique direito para configuracoes completas: selecao de voz, idioma, volume, pacotes de som.
 
-ws.onopen = () => {
-  ws.send(JSON.stringify({
-    type: 'transcription_start',
-    timestamp: Date.now(),
-    payload: {
-      device_id: 'wasapi-loopback-0',
-      language: 'en',
-      enable_nlp: true,
-      enable_summary: true
-    }
-  }));
-};
+## Especificacoes STT Local
 
-ws.onmessage = (event) => {
-  const message = JSON.parse(event.data);
-  console.log(message.type, message.payload);
-};
-```
+| Spec | Valor |
+|------|-------|
+| **Modelo** | Whisper large-v3 |
+| **Engine** | faster-whisper (backend CTranslate2) |
+| **GPU** | NVIDIA RTX 5080 (qualquer GPU CUDA funciona) |
+| **VRAM** | ~3 GB (float16) |
+| **Inferencia** | ~1 segundo para 10-15s de audio |
+| **VAD** | Silero VAD (remove silencio pre-transcricao) |
+| **Idiomas** | Auto-detectar + IT, EN, PT, ES, FR, DE, JA |
+| **Privacidade** | 100% local - nenhum audio sai da maquina |
 
-#### REST API
+## Especificacoes TTS
 
-```bash
-# List sessions
-curl http://localhost:8000/api/v1/sessions
+| Spec | Valor |
+|------|-------|
+| **Engine** | edge-tts (Vozes Neurais Microsoft Edge) |
+| **Custo** | Gratis |
+| **Vozes** | 47 em 8 idiomas |
+| **Cache** | Cache dinamico MP3 por hash de conteudo |
+| **Personas** | Alessia (subtarefas, italiano) + Claudio (principal, ingles) |
 
-# Get transcript
-curl http://localhost:8000/api/v1/sessions/{session_id}/transcript?format=json
+## Pre-requisitos
 
-# Get summary
-curl http://localhost:8000/api/v1/sessions/{session_id}/summary
-```
+- Windows 10/11
+- GPU NVIDIA com suporte CUDA
+- Python 3.11+
+- FFmpeg (`ffplay` no PATH)
+- Claude Code CLI
 
-### CLI Tools
+## Instalacao
 
 ```bash
-# Process audio file
-python -m src.cli.process_audio --input audio.wav --output transcript.json
+# Clonar
+git clone https://github.com/fra-itc/parlaconclaudio.git
+cd parlaconclaudio
 
-# Benchmark performance
-python -m src.cli.benchmark --model whisper-large-v3 --device cuda
+# Criar ambiente virtual
+python -m venv venv
+.\venv\Scripts\activate
 
-# Export session data
-python -m src.cli.export_session --session-id <id> --format srt
+# Instalar dependencias principais
+pip install faster-whisper pynput pyperclip pyaudio pystray Pillow
+
+# Instalar suporte CUDA
+pip install nvidia-cudnn-cu12 nvidia-cublas-cu12
+
+# Corrigir compatibilidade do transformers
+pip install "transformers<4.45"
+
+# Instalar TTS
+pip install edge-tts
 ```
+
+### Executar
+
+```bash
+# Opcao 1: Arquivo batch
+.\VoiceBridge.bat
+
+# Opcao 2: Direto
+.\venv\Scripts\python.exe -m src.voice_bridge.bridge
+```
+
+## Ferramentas Usadas no Desenvolvimento
+
+| Ferramenta | Funcao |
+|------------|--------|
+| **Claude Code** (Anthropic CLI) | Assistente de IA que construiu todo o projeto |
+| **Claude Opus 4.6** | Modelo de IA por tras de todo o desenvolvimento |
+| **Python 3.11** | Linguagem principal |
+| **faster-whisper** | Inferencia Whisper local (CTranslate2) |
+| **edge-tts** | Vozes Neurais Microsoft (gratis) |
+| **pynput** | Hooks de teclado globais |
+| **pystray + Pillow** | Tray com icone animado |
+| **PyAudio / PortAudio** | Captura de microfone |
+| **ffplay** (FFmpeg) | Reproducao de audio |
+| **Win32 SendInput** (ctypes) | Simulacao de teclado para auto-paste |
+| **nvidia-cudnn-cu12** | Biblioteca CUDA Deep Neural Network |
 
 ---
 
-## 🧪 Testing
+# Italiano
 
-### Quick Start
+## Cos'e parlaconclaudio?
 
-Run all audio tests with the convenience script:
+Un sistema di interazione vocale per **Claude Code** (la CLI di IA di Anthropic) su Windows. Aggiunge due capacita' che trasformano l'esperienza di programmazione:
 
-```bash
-./scripts/run_audio_tests.sh --all
-```
+1. **Dettatura Vocale** - Premi `Ctrl+Alt+Space`, parla naturalmente, e le tue parole vengono trascritte localmente sulla GPU e incollate nel terminale attivo. Nessun cloud, nessuna latenza, nessun problema di privacy.
 
-Or run specific test categories:
+2. **Notifiche Vocali** - Due personaggi IA (Alessia e Claudio) annunciano il completamento dei task, richieste di permesso e cambi di stato con voci dal suono naturale. Puoi allontanarti dallo schermo e sapere comunque cosa sta facendo Claude.
 
-```bash
-# Unit tests only
-./scripts/run_audio_tests.sh --unit
+3. **Controllo Tray Animato** - Una sfera di marmo mistica nel system tray cambia colore in base allo stato. Click destro per tutte le impostazioni: selezione voce, lingua, volume, pacchetti suoni.
 
-# Integration tests only
-./scripts/run_audio_tests.sh --integration
+## Specifiche STT Locale
 
-# Performance benchmarks only
-./scripts/run_audio_tests.sh --performance
+| Spec | Valore |
+|------|--------|
+| **Modello** | Whisper large-v3 |
+| **Engine** | faster-whisper (backend CTranslate2) |
+| **GPU** | NVIDIA RTX 5080 (qualsiasi GPU CUDA funziona) |
+| **VRAM** | ~3 GB (float16) |
+| **Inferenza** | ~1 secondo per 10-15s di audio |
+| **VAD** | Silero VAD (rimuove silenzio pre-trascrizione) |
+| **Lingue** | Auto-detect + IT, EN, PT, ES, FR, DE, JA |
+| **Privacy** | 100% locale - nessun audio esce dalla macchina |
 
-# Quick tests (skip slow tests)
-./scripts/run_audio_tests.sh --quick
+## Specifiche TTS
 
-# With coverage report
-./scripts/run_audio_tests.sh --coverage
-```
+| Spec | Valore |
+|------|--------|
+| **Engine** | edge-tts (Voci Neurali Microsoft Edge) |
+| **Costo** | Gratuito |
+| **Voci** | 47 in 8 lingue |
+| **Cache** | Cache dinamico MP3 per hash del contenuto |
+| **Personaggi** | Alessia (subtask, italiano) + Claudio (task principale, inglese) |
 
-### Using Pytest Directly
+## Prerequisiti
 
-```bash
-# Run all tests
-pytest
+- Windows 10/11
+- GPU NVIDIA con supporto CUDA
+- Python 3.11+
+- FFmpeg (`ffplay` nel PATH)
+- Claude Code CLI
 
-# Run audio tests only
-pytest -m audio -v
-
-# Run specific test categories
-pytest tests/unit -v              # Unit tests
-pytest tests/integration -v       # Integration tests
-pytest tests/performance -v       # Performance benchmarks
-
-# Run tests with markers
-pytest -m vad -v                  # VAD tests
-pytest -m websocket -v            # WebSocket tests
-pytest -m "not slow" -v           # Skip slow tests
-
-# With coverage report
-pytest --cov=src/core/audio_capture --cov-report=html
-
-# Parallel execution
-pytest -n auto
-```
-
-### Manual Interactive Tests
-
-Test live microphone capture:
+## Installazione
 
 ```bash
-# Basic 5-second recording
-python -m tests.manual.test_microphone_capture
+# Clona
+git clone https://github.com/fra-itc/parlaconclaudio.git
+cd parlaconclaudio
 
-# Custom duration with audio levels and VAD display
-python -m tests.manual.test_microphone_capture \
-  --duration 10 \
-  --show-levels \
-  --show-vad \
-  --output test_output/recording.wav
+# Crea ambiente virtuale
+python -m venv venv
+.\venv\Scripts\activate
 
-# List available audio devices
-python -m tests.manual.test_microphone_capture --list-devices
+# Installa dipendenze principali
+pip install faster-whisper pynput pyperclip pyaudio pystray Pillow
+
+# Installa supporto CUDA
+pip install nvidia-cudnn-cu12 nvidia-cublas-cu12
+
+# Fix compatibilita' transformers
+pip install "transformers<4.45"
+
+# Installa TTS
+pip install edge-tts
 ```
 
-### Test Coverage
-
-Current audio test coverage:
-
-- **Audio Capture**: WASAPI, format conversion, device management
-- **VAD Detection**: Silero VAD, speech segmentation, accuracy >90%
-- **Circular Buffer**: Thread-safe buffering, overflow/underflow handling
-- **WebSocket Streaming**: Connection lifecycle, audio transmission, latency
-- **End-to-End Pipeline**: Mic → VAD → Buffer → WS → STT → NLP → Summary
-- **Performance**: Latency benchmarks, throughput tests, memory profiling
-
-### Performance Targets
-
-| Component | Target | Critical |
-|-----------|--------|----------|
-| **STT Processing** | < 200ms | < 500ms |
-| **NLP Processing** | < 100ms | < 200ms |
-| **Total Pipeline** | < 500ms | < 1000ms |
-| **Throughput** | > 10 chunks/sec | > 5 chunks/sec |
-| **Memory Usage** | < 500MB | < 1GB |
-
-### Documentation
-
-For detailed testing information, see:
-
-- **[Audio Testing Guide](tests/AUDIO_TESTING.md)** - Comprehensive testing documentation
-- **[Audio Fixtures README](tests/fixtures/audio/README.md)** - Test audio fixtures
-
-### Performance Benchmarks
+### Avvio
 
 ```bash
-# Audio latency benchmark (detailed metrics)
-pytest tests/performance/test_audio_latency.py -v
+# Opzione 1: File batch
+.\VoiceBridge.bat
 
-# Throughput and resource utilization
-pytest tests/performance/test_throughput.py -v
-
-# Legacy benchmarks
-python benchmarks/latency_test.py
-python benchmarks/throughput_test.py
-python benchmarks/gpu_memory_profile.py
-
-# Load test
-locust -f benchmarks/load_test.py --host http://localhost:8000
+# Opzione 2: Diretto
+.\venv\Scripts\python.exe -m src.voice_bridge.bridge
 ```
 
-### CI/CD Integration
-
-Tests are organized for different CI/CD scenarios:
-
-- **On Every PR**: Unit tests, basic integration tests
-- **Nightly Builds**: Full integration tests, performance benchmarks
-- **Manual Trigger**: Interactive tests, stress tests
-
-See [Audio Testing Guide](tests/AUDIO_TESTING.md) for CI/CD configuration examples.
-
----
-
-## 📊 Monitoring
-
-### Grafana Dashboards
-
-Access Grafana at `http://localhost:3001` (default: admin/admin)
-
-**Available Dashboards:**
-- **System Overview**: CPU, GPU, memory, latency
-- **STT Performance**: WER, throughput, queue depth
-- **ORCHIDEA Metrics**: PUII alignment, quality gates, agent activity
-- **Redis Streams**: Message rates, lag, pending messages
-
-### Prometheus Metrics
-
-- `rtstt_audio_latency_ms` - Audio capture latency
-- `rtstt_stt_latency_ms` - STT processing latency
-- `rtstt_nlp_latency_ms` - NLP processing latency
-- `rtstt_wer` - Word Error Rate
-- `rtstt_gpu_utilization` - GPU usage percentage
-- `rtstt_active_sessions` - Number of active sessions
-- `orchidea_puii_alignment` - ORCHIDEA alignment score
-
----
-
-## 🛠️ Development
-
-### Project Structure
+## Menu Tray
 
 ```
-realtime-stt-orchestrator/
-├── docs/                    # Documentation
-│   └── api/                # API contracts (gRPC, WebSocket, REST)
-├── src/
-│   ├── core/               # Core modules
-│   │   ├── audio_capture/  # WASAPI, VAD, buffer
-│   │   ├── stt_engine/     # Whisper, gRPC server
-│   │   ├── nlp_insights/   # NLP, diarization
-│   │   └── summary_generator/  # Llama summarizer
-│   ├── agents/             # ORCHIDEA agents
-│   ├── ui/                 # Electron + React
-│   └── shared/             # Shared utilities
-├── tests/                  # Test suites
-├── orchestration/          # Agent configs, workflows
-├── infrastructure/         # Docker, K8s, monitoring
-├── KB/                     # Knowledge base (specs)
-├── requirements/           # Python dependencies
-└── docker-compose.yml
+Voice Bridge v0.3
+─────────────────
+Whisper Language > Auto / IT / EN / PT / ES / FR / DE / JA
+─────────────────
+Quick Presets > Classic / Brasileiro / Full Italian / All English / Seductive
+Alessia [Isabella] > Italiano > / English US > / English GB > / Portugues BR > / ...
+Claudio [Andrew ML] > (stessa struttura - 47 voci per lingua)
+─────────────────
+Volume [200%] > 50% / 75% / 100% / 125% / 150% / 200% / 250% / 300%
+Sound Pack > r2d2 / south-park / american-dad
+Preview [r2d2] > (click per ascoltare)
+─────────────────
+Exit
 ```
 
-### Git Worktree Workflow
+## Strumenti Usati nello Sviluppo
 
-For parallel development:
-
-```bash
-# Create worktrees for team isolation
-git worktree add ../RTSTT-audio feature/audio-capture
-git worktree add ../RTSTT-ml feature/ml-pipeline
-git worktree add ../RTSTT-frontend feature/ui-dashboard
-git worktree add ../RTSTT-integration feature/backend-api
-
-# List worktrees
-git worktree list
-
-# Remove worktree
-git worktree remove ../RTSTT-audio
-```
-
-### Code Quality
-
-```bash
-# Format code
-black src/ tests/
-isort src/ tests/
-
-# Lint
-flake8 src/ tests/
-pylint src/
-
-# Type check
-mypy src/
-
-# Security scan
-bandit -r src/
-safety check
-```
-
-### Pre-commit Hooks
-
-```bash
-# Install hooks
-pre-commit install
-
-# Run manually
-pre-commit run --all-files
-```
+| Strumento | Scopo |
+|-----------|-------|
+| **Claude Code** (Anthropic CLI) | Assistente IA che ha costruito l'intero progetto |
+| **Claude Opus 4.6** | Il modello IA dietro tutto lo sviluppo |
+| **Python 3.11** | Linguaggio principale |
+| **faster-whisper** | Inferenza Whisper locale (CTranslate2) |
+| **edge-tts** | Voci Neurali Microsoft (gratuite) |
+| **pynput** | Hook tastiera globali |
+| **pystray + Pillow** | Tray con icona animata |
+| **PyAudio / PortAudio** | Cattura microfono |
+| **ffplay** (FFmpeg) | Riproduzione audio |
+| **Win32 SendInput** (ctypes) | Simulazione tastiera per auto-paste |
+| **nvidia-cudnn-cu12** | Libreria CUDA Deep Neural Network |
 
 ---
 
-## 📚 Documentation
+## License
 
-- [API Reference](docs/api/) - gRPC, WebSocket, REST specifications
-- [Architecture](docs/ARCHITECTURE.md) - System design and data flow
-- [ORCHIDEA Integration](docs/ORCHIDEA_INTEGRATION.md) - Framework usage
-- [Deployment Guide](docs/DEPLOYMENT.md) - Production deployment
-- [Agent Specifications](KB/) - Team lead specs
+MIT License - see [LICENSE](LICENSE) for details.
 
-### API Documentation
+## Credits
 
-Swagger UI: http://localhost:8000/docs
-ReDoc: http://localhost:8000/redoc
+Built entirely with **[Claude Code](https://claude.ai/claude-code)** by [Anthropic](https://anthropic.com), powered by **Claude Opus 4.6**.
+
+The name "parlaconclaudio" means "talk with Claudio" - a nod to both the AI persona Claudio who announces your tasks, and the act of speaking with Claude through voice.
 
 ---
 
-## 🤝 Contributing
-
-This is a POC project. Contributions are welcome after the initial Windows 11 implementation is complete.
-
-### Development Workflow
-
-1. Create feature branch from `develop`
-2. Implement changes with tests (>95% coverage)
-3. Run quality checks (`black`, `isort`, `flake8`, `mypy`)
-4. Submit PR to `develop`
-5. Pass CI/CD pipeline
-6. Code review + approval
-7. Merge
-
----
-
-## 📝 License
-
-MIT License - see [LICENSE](LICENSE) file
-
----
-
-## 🙏 Acknowledgments
-
-- **OpenAI Whisper** - State-of-the-art STT model
-- **Mistral AI** - NLP language model
-- **Meta Llama** - Summarization model
-- **ORCHIDEA Framework** - Multi-agent orchestration methodology
-- **Anthropic Claude** - Master orchestrator LLM
-
----
-
-## 📞 Support
-
-For issues and questions:
-- GitHub Issues: [Link to repository issues]
-- Documentation: [Link to docs]
-- Email: support@example.com
-
----
-
-## 🗺️ Roadmap
-
-### Phase 1: Windows 11 POC ✅ (Current)
-- WASAPI audio capture
-- RTX 5080 GPU optimization
-- Electron desktop app
-- ORCHIDEA orchestration
-
-### Phase 2: Multi-Platform Support (Future)
-- macOS (CoreAudio)
-- Linux (PulseAudio)
-- Platform abstraction layer
-
-### Phase 3: Cloud Deployment (Future)
-- Kubernetes orchestration
-- Horizontal scaling
-- Cloud GPU support (AWS, GCP, Azure)
-
-### Phase 4: Advanced Features (Future)
-- Multi-language support (50+ languages)
-- Custom model fine-tuning
-- Real-time translation
-- Mobile app (iOS, Android)
-
----
-
-**Built with ❤️ using ORCHIDEA Framework v1.3**
+<p align="center">
+  <sub>Made with voice, code, and a marble sphere that never stops spinning.</sub>
+</p>

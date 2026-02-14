@@ -248,3 +248,10 @@ coverage.xml
 .nv/
 .nvidia/
 .triton/
+
+# Voice Bridge specific
+nul
+*.jpg
+*.png
+*.ico
+voice_bridge.spec
