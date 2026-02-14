@@ -7,9 +7,9 @@ Animated marble sphere icon that shifts colors:
 - Transcribing: fast golden shimmer
 
 Right-click menu:
+- Voice selector (single speaker for all events)
 - Whisper Language selector
-- TTS Voice Style (Alessia + Claudio presets)
-- Sound Pack selector (R2-D2, South Park, American Dad)
+- Sound Pack + Volume
 - Preview sounds on click
 - Exit
 """
@@ -39,28 +39,16 @@ except ImportError:
 TTS_CONFIG = Path.home() / ".claude" / "cache" / "tts" / "tts_config.json"
 SOUNDS_DIR = Path.home() / ".claude" / "cache" / "tts" / "sounds"
 
-# === QUICK PRESETS (fast selection) ===
+# === QUICK PRESETS (single voice) ===
 VOICE_PRESETS = {
-    "Classic (Isabella + Andrew)": {
-        "alessia": {"voice": "it-IT-IsabellaNeural", "rate": "-4%", "pitch": "-8Hz"},
-        "claudio": {"voice": "en-US-AndrewMultilingualNeural", "rate": "+0%", "pitch": "+0Hz"},
-    },
-    "Brasileiro (Thalita + Andrew)": {
-        "alessia": {"voice": "pt-BR-ThalitaMultilingualNeural", "rate": "-2%", "pitch": "-4Hz"},
-        "claudio": {"voice": "en-US-AndrewMultilingualNeural", "rate": "+0%", "pitch": "+0Hz"},
-    },
-    "Full Italian (Isabella + Diego)": {
-        "alessia": {"voice": "it-IT-IsabellaNeural", "rate": "-4%", "pitch": "-8Hz"},
-        "claudio": {"voice": "it-IT-DiegoNeural", "rate": "+0%", "pitch": "-2Hz"},
-    },
-    "All English (Emma + Andrew)": {
-        "alessia": {"voice": "en-US-EmmaMultilingualNeural", "rate": "+0%", "pitch": "+0Hz"},
-        "claudio": {"voice": "en-US-AndrewMultilingualNeural", "rate": "+0%", "pitch": "+0Hz"},
-    },
-    "Seductive (Seraphina + Brian)": {
-        "alessia": {"voice": "en-US-SeraphinaMultilingualNeural", "rate": "-5%", "pitch": "-10Hz"},
-        "claudio": {"voice": "en-US-BrianMultilingualNeural", "rate": "-3%", "pitch": "-5Hz"},
-    },
+    "Isabella (IT)": {"voice": "it-IT-IsabellaNeural", "rate": "-4%", "pitch": "-8Hz"},
+    "Andrew ML (EN)": {"voice": "en-US-AndrewMultilingualNeural", "rate": "+0%", "pitch": "+0Hz"},
+    "Thalita ML (BR)": {"voice": "pt-BR-ThalitaMultilingualNeural", "rate": "-2%", "pitch": "-4Hz"},
+    "Seraphina ML": {"voice": "en-US-SeraphinaMultilingualNeural", "rate": "-5%", "pitch": "-10Hz"},
+    "Brian ML (EN)": {"voice": "en-US-BrianMultilingualNeural", "rate": "-3%", "pitch": "-5Hz"},
+    "Diego (IT)": {"voice": "it-IT-DiegoNeural", "rate": "+0%", "pitch": "-2Hz"},
+    "Emma ML (EN)": {"voice": "en-US-EmmaMultilingualNeural", "rate": "+0%", "pitch": "+0Hz"},
+    "Vivienne ML (FR)": {"voice": "fr-FR-VivienneMultilingualNeural", "rate": "+0%", "pitch": "+0Hz"},
 }
 
 # === EDGE-TTS VOICES BY LANGUAGE ===
@@ -412,8 +400,8 @@ class TrayIcon:
             return parts[2].replace("Neural", "").replace("Multilingual", " ML")
         return voice_id
 
-    def _build_voice_submenu(self, role: str, current_voice_id: str) -> "pystray.Menu":
-        """Build a voice selection submenu organized by language for Alessia or Claudio."""
+    def _build_voice_submenu(self, current_voice_id: str) -> "pystray.Menu":
+        """Build voice selection submenu organized by language."""
         lang_submenus = []
         for lang_name, voices in EDGE_VOICES.items():
             voice_items = []
@@ -423,7 +411,7 @@ class TrayIcon:
                 label = f"{'> ' if is_current else '  '}{v['name']} [{gender_icon}]"
                 voice_items.append(pystray.MenuItem(
                     label,
-                    self._make_set_individual_voice(role, v["id"]),
+                    self._make_set_voice(v["id"]),
                 ))
             lang_submenus.append(pystray.MenuItem(
                 lang_name,
@@ -435,8 +423,21 @@ class TrayIcon:
         config = _load_config()
         current_pack = config.get("sound_pack", "r2d2")
         current_lang = config.get("whisper_language")
-        alessia_voice = config.get("alessia", {}).get("voice", "it-IT-IsabellaNeural")
-        claudio_voice = config.get("claudio", {}).get("voice", "en-US-AndrewMultilingualNeural")
+        current_voice = config.get("voice", {"voice": "it-IT-IsabellaNeural"})
+        current_voice_id = current_voice.get("voice", "it-IT-IsabellaNeural")
+
+        # --- Quick Presets submenu ---
+        preset_items = []
+        for preset_name, preset_data in VOICE_PRESETS.items():
+            is_current = (preset_data["voice"] == current_voice_id)
+            preset_items.append(pystray.MenuItem(
+                f"{'> ' if is_current else '  '}{preset_name}",
+                self._make_set_voice_preset(preset_name),
+            ))
+
+        # --- Full voice browser by language ---
+        voice_display = self._voice_display_name(current_voice_id)
+        voice_browser = self._build_voice_submenu(current_voice_id)
 
         # --- Whisper Language submenu ---
         lang_items = []
@@ -446,26 +447,6 @@ class TrayIcon:
                 f"{'> ' if checked else '  '}{label}",
                 self._make_set_language(code),
             ))
-
-        # --- Quick Presets submenu ---
-        preset_items = []
-        for preset_name, preset_data in VOICE_PRESETS.items():
-            is_current = (
-                preset_data["alessia"]["voice"] == alessia_voice
-                and preset_data["claudio"]["voice"] == claudio_voice
-            )
-            preset_items.append(pystray.MenuItem(
-                f"{'> ' if is_current else '  '}{preset_name}",
-                self._make_set_voice_preset(preset_name),
-            ))
-
-        # --- Alessia individual voice submenu ---
-        alessia_display = self._voice_display_name(alessia_voice)
-        alessia_submenu = self._build_voice_submenu("alessia", alessia_voice)
-
-        # --- Claudio individual voice submenu ---
-        claudio_display = self._voice_display_name(claudio_voice)
-        claudio_submenu = self._build_voice_submenu("claudio", claudio_voice)
 
         # --- Sound Pack submenu ---
         pack_items = []
@@ -485,7 +466,7 @@ class TrayIcon:
         vol_items = []
         for level in VOLUME_LEVELS:
             checked = (level == current_vol)
-            pct = f"{level}%"  # ffplay 100 = normal
+            pct = f"{level}%"
             vol_items.append(pystray.MenuItem(
                 f"{'> ' if checked else '  '}{pct}",
                 self._make_set_volume(level),
@@ -502,13 +483,14 @@ class TrayIcon:
                 ))
 
         return pystray.Menu(
-            pystray.MenuItem("Voice Bridge v0.3", None, enabled=False),
+            pystray.MenuItem("Voice Bridge v0.4", None, enabled=False),
             pystray.Menu.SEPARATOR,
+            pystray.MenuItem(f"Voice [{voice_display}]", pystray.Menu(
+                pystray.MenuItem("Quick Presets", pystray.Menu(*preset_items)),
+                pystray.Menu.SEPARATOR,
+                pystray.MenuItem("Browse All", voice_browser),
+            )),
             pystray.MenuItem("Whisper Language", pystray.Menu(*lang_items)),
-            pystray.Menu.SEPARATOR,
-            pystray.MenuItem("Quick Presets", pystray.Menu(*preset_items)),
-            pystray.MenuItem(f"Alessia [{alessia_display}]", alessia_submenu),
-            pystray.MenuItem(f"Claudio [{claudio_display}]", claudio_submenu),
             pystray.Menu.SEPARATOR,
             pystray.MenuItem(f"Volume [{current_vol}%]", pystray.Menu(*vol_items)),
             pystray.MenuItem("Sound Pack", pystray.Menu(*pack_items)),
@@ -529,27 +511,26 @@ class TrayIcon:
     def _make_set_voice_preset(self, preset_name):
         def handler(icon, item):
             config = _load_config()
-            preset = VOICE_PRESETS[preset_name]
-            config["alessia"] = preset["alessia"]
-            config["claudio"] = preset["claudio"]
+            config["voice"] = dict(VOICE_PRESETS[preset_name])
+            # Clean up legacy keys
+            config.pop("alessia", None)
+            config.pop("claudio", None)
             _save_config(config)
-            logger.info(f"Voice preset set to: {preset_name}")
+            logger.info(f"Voice set to preset: {preset_name}")
             self._rebuild_menu()
         return handler
 
-    def _make_set_individual_voice(self, role: str, voice_id: str):
-        """Set a single voice for Alessia or Claudio."""
+    def _make_set_voice(self, voice_id: str):
+        """Set the single voice for all TTS events."""
         def handler(icon, item):
             config = _load_config()
-            if role not in config:
-                config[role] = {}
-            config[role]["voice"] = voice_id
-            # Set sensible defaults for rate/pitch if missing
-            config[role].setdefault("rate", "+0%")
-            config[role].setdefault("pitch", "+0Hz")
+            config["voice"] = {"voice": voice_id, "rate": "+0%", "pitch": "+0Hz"}
+            # Clean up legacy keys
+            config.pop("alessia", None)
+            config.pop("claudio", None)
             _save_config(config)
             name = self._voice_display_name(voice_id)
-            logger.info(f"{role.capitalize()} voice set to: {name} ({voice_id})")
+            logger.info(f"Voice set to: {name} ({voice_id})")
             self._rebuild_menu()
         return handler
 
