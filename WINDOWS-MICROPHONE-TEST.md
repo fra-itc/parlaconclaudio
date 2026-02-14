@@ -9,6 +9,7 @@ test_windows_microphone.bat
 ```
 
 This will:
+
 1. Check for Python and install PyAudio if needed
 2. List available microphones
 3. Check backend connectivity
@@ -60,6 +61,7 @@ python -m src.host_audio_bridge.main ^
 ```
 
 **Now speak into your microphone!** You should see:
+
 - ✅ "Connected to backend"
 - ✅ "Audio capture started"
 - 📝 Real-time transcriptions appearing every few seconds
@@ -118,11 +120,13 @@ python -m src.host_audio_bridge.main ^
 ### Issue: "PyAudio not installed"
 
 **Solution:**
+
 ```cmd
 pip install pyaudio
 ```
 
 If that fails on Windows, try:
+
 ```cmd
 pip install pipwin
 pipwin install pyaudio
@@ -131,6 +135,7 @@ pipwin install pyaudio
 ### Issue: "Connection refused on port 8000"
 
 **Solution:**
+
 ```cmd
 # Check if backend is running
 curl http://localhost:8000/health
@@ -145,6 +150,7 @@ docker-compose logs backend
 ### Issue: "No default input device"
 
 **Solution:**
+
 1. Open Windows Sound Settings
 2. Go to "Sound Control Panel" → "Recording"
 3. Enable your microphone and set it as default
@@ -153,6 +159,7 @@ docker-compose logs backend
 ### Issue: "Permission denied" for microphone
 
 **Solution:**
+
 1. Windows Settings → Privacy → Microphone
 2. Enable "Allow apps to access your microphone"
 3. Enable for Python/Command Prompt
@@ -160,12 +167,14 @@ docker-compose logs backend
 ### Issue: Empty transcriptions
 
 **Possible causes:**
+
 - Speaking too quietly → Adjust microphone levels in Windows
 - Microphone muted → Check Windows sound settings
 - Wrong microphone selected → Use `--device-id` to specify
 - Background noise → Test in quieter environment
 
 **Verify microphone is working:**
+
 ```cmd
 # Windows Sound Recorder test
 soundrecorder
@@ -244,24 +253,29 @@ Windows Host                    Docker Container (WSL2/Linux)
 After successful microphone testing:
 
 1. **Test with different speech:**
+   
    - Normal conversation
    - Technical terms
    - Different accents
    - Background noise scenarios
 
 2. **Check NLP insights:**
+   
    - View backend logs: `docker-compose logs backend | grep "NLP"`
    - Keywords should be extracted from transcriptions
 
 3. **Test summary generation:**
+   
    - Speak for 2-3 minutes continuously
    - Check backend logs for summary: `docker-compose logs backend | grep "Summary"`
 
 4. **Frontend integration:**
+   
    - Start desktop UI: `cd src/ui/desktop && npm start`
    - See transcriptions in the UI in real-time
 
 5. **Multi-user testing:**
+   
    - Open multiple terminals
    - Run audio bridge in each
    - Verify concurrent transcriptions work
@@ -276,6 +290,7 @@ If you encounter issues:
 4. Review LIVE-TEST-RESULTS.md for known issues
 
 For more details, see:
+
 - `DEPLOYMENT.md` - Full deployment guide
 - `WAVE-2-QUICKSTART.md` - Wave 2 features
 - `STRATEGIC-ROADMAP-WAVE4.md` - Future enhancements
