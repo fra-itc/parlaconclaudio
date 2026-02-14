@@ -89,7 +89,7 @@ A voice interaction system for **Claude Code** (Anthropic's AI coding CLI) on Wi
 |------|-------|
 | **Model** | Whisper large-v3 |
 | **Engine** | faster-whisper (CTranslate2 backend) |
-| **GPU** | NVIDIA RTX 5080 (any CUDA GPU works) |
+| **GPU** | Developed and tested on NVIDIA RTX 5080 (any CUDA GPU works) |
 | **VRAM** | ~3 GB (float16) |
 | **Inference** | ~1 second for 10-15s audio |
 | **VAD** | Silero VAD (removes silence pre-transcription) |
