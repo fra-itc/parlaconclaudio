@@ -499,7 +499,7 @@ class TrayIcon:
                 ))
 
         return pystray.Menu(
-            pystray.MenuItem("Voice Bridge v0.4", None, enabled=False),
+            pystray.MenuItem("Voice Bridge v0.8", None, enabled=False),
             pystray.Menu.SEPARATOR,
             pystray.MenuItem(f"Voice [{voice_display}]", pystray.Menu(
                 pystray.MenuItem("Quick Presets", pystray.Menu(*preset_items)),
