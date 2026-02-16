@@ -118,6 +118,12 @@ EDGE_VOICES = {
 
 VOLUME_LEVELS = [50, 75, 100, 125, 150, 200, 250, 300]
 
+TTS_MODES = {
+    "Full": "full",              # Chime + voice always
+    "Semi-silent": "semi-silent", # Chime always, voice only on Stop
+    "Silent": "silent",           # Chime only, no voice
+}
+
 WHISPER_LANGUAGES = {
     "Auto-detect": None,
     "Italiano": "it",
@@ -461,6 +467,16 @@ class TrayIcon:
                         self._make_set_sound_pack(pack_name),
                     ))
 
+        # --- TTS Mode submenu ---
+        current_mode = config.get("tts_mode", "full")
+        mode_items = []
+        for mode_label, mode_value in TTS_MODES.items():
+            checked = (current_mode == mode_value)
+            mode_items.append(pystray.MenuItem(
+                f"{'> ' if checked else '  '}{mode_label}",
+                self._make_set_tts_mode(mode_value),
+            ))
+
         # --- Volume submenu ---
         current_vol = config.get("volume", 200)
         vol_items = []
@@ -492,6 +508,7 @@ class TrayIcon:
             )),
             pystray.MenuItem("Whisper Language", pystray.Menu(*lang_items)),
             pystray.Menu.SEPARATOR,
+            pystray.MenuItem(f"TTS Mode [{current_mode}]", pystray.Menu(*mode_items)),
             pystray.MenuItem(f"Volume [{current_vol}%]", pystray.Menu(*vol_items)),
             pystray.MenuItem("Sound Pack", pystray.Menu(*pack_items)),
             pystray.MenuItem(f"Preview [{current_pack}]", pystray.Menu(*preview_items) if preview_items else None),
@@ -540,6 +557,15 @@ class TrayIcon:
             config["volume"] = level
             _save_config(config)
             logger.info(f"Volume set to: {level}%")
+            self._rebuild_menu()
+        return handler
+
+    def _make_set_tts_mode(self, mode_value: str):
+        def handler(icon, item):
+            config = _load_config()
+            config["tts_mode"] = mode_value
+            _save_config(config)
+            logger.info(f"TTS mode set to: {mode_value}")
             self._rebuild_menu()
         return handler
 

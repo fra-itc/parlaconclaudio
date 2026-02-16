@@ -352,16 +352,23 @@ def main() -> None:
     else:
         return
 
-    # Generate TTS
+    # Check TTS mode: "full" (default), "semi-silent", "silent"
+    tts_mode = load_config().get("tts_mode", "full")
+
+    # 1) Chime (always plays)
+    play_chime(chime_key)
+
+    # 2) Voice (depends on mode)
+    if tts_mode == "silent":
+        return
+    if tts_mode == "semi-silent" and event_name != "Stop":
+        return
+
     audio_path = resolve_audio(message, voice)
     if not audio_path:
         return
 
-    # 1) Chime
-    play_chime(chime_key)
-    # 2) Gap
     time.sleep(CHIME_GAP_MS / 1000)
-    # 3) Voice
     play_mp3(audio_path)
 
 
